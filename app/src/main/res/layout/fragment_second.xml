@@ -126,6 +126,17 @@
             style="@style/Widget.MaterialComponents.Button"
             tools:ignore="VisualLintButtonSize" />
 
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/installsdcardapk"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Установить APK с sdcard (папка apk)"
+            android:backgroundTint="?attr/colorPrimary"
+            style="@style/Widget.MaterialComponents.Button"
+            tools:ignore="VisualLintButtonSize" />
+
     </LinearLayout>
     </ScrollView>
 </FrameLayout>

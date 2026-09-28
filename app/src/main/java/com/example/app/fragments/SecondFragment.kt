@@ -40,6 +40,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import com.example.app.ApkAutoInstaller
 import com.example.app.shell.AdbShell
+import com.example.app.shell.SdcardApkInstaller
+import androidx.lifecycle.lifecycleScope
 
 
 @Suppress("DEPRECATION")
@@ -70,6 +72,9 @@ class SecondFragment : Fragment() {
 
     private fun setupButtons(view: View) {
         // Кнопка удаления пакета
+        val installSdcardApk = view.findViewById<Button>(R.id.installsdcardapk)
+        installSdcardApk.setOnClickListener { installApksFromSdcard(installSdcardApk) }
+
         val installButton = view.findViewById<Button>(R.id.deletepkg)
         installButton.setOnClickListener { deletePkgFromFile("packages.txt") }
 
@@ -156,6 +161,51 @@ class SecondFragment : Fragment() {
     }
 
 
+
+    // Установка всех .apk из /sdcard/apk
+    private fun installApksFromSdcard(button: Button) {
+        val ctx = requireContext()
+        button.isEnabled = false
+        viewLifecycleOwner.lifecycleScope.launch {
+            val summary = SdcardApkInstaller.installAll(ctx) { progress ->
+                Toast.makeText(ctx, progress, Toast.LENGTH_SHORT).show()
+            }
+            button.isEnabled = true
+
+            when (summary.error) {
+                "NEED_ALL_FILES" -> {
+                    Toast.makeText(ctx, "Разрешите доступ ко всем файлам и нажмите кнопку ещё раз", Toast.LENGTH_LONG).show()
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:${ctx.packageName}")
+                        )
+                    )
+                }
+                "NEED_INSTALL_PERMISSION" -> {
+                    Toast.makeText(ctx, "Разрешите установку из этого приложения и нажмите кнопку ещё раз", Toast.LENGTH_LONG).show()
+                    startActivity(
+                        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}"))
+                    )
+                }
+                null -> {
+                    val message = buildString {
+                        append("Установлено: ${summary.installed.size} из ${summary.total}")
+                        if (summary.failed.isNotEmpty()) {
+                            append("\n\nНе удалось:\n")
+                            append(summary.failed.joinToString("\n") { "• $it" })
+                        }
+                    }
+                    AlertDialog.Builder(ctx)
+                        .setTitle("Установка APK")
+                        .setMessage(message)
+                        .setPositiveButton("OK") { d, _ -> d.dismiss() }
+                        .show()
+                }
+                else -> Toast.makeText(ctx, summary.error, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     private fun downloadAPK() {
         CoroutineScope(Dispatchers.Main).launch {

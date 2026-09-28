@@ -15,8 +15,7 @@ import java.io.IOException
  */
 fun Context.savePackagesToFile(filename: String): Boolean {
     val packages = listOf(
-      "com.blackview.ai.imagex",
-"com.blackview.dokegamecenter",
+      "com.blackview.dokegamecenter",
 "com.blackview.ai.doki",
 "com.blackview.surfline",
 "com.blackview.ai.vidgen",
@@ -159,6 +158,7 @@ fun Context.savePackagesToFile(filename: String): Boolean {
 "com.android.avatarpicker",
 "com.android.wallpapercropper",
 "com.google.android.appsearch.apk"
+
     ).joinToString("\n")
 
     val downloadFolder = this.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)

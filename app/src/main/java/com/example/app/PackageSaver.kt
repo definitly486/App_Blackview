@@ -23,6 +23,7 @@ fun Context.savePackagesToFile(filename: String): Boolean {
 "com.blackview.artorial.client",
 "cn.wps.moffice_eng",
 "com.sparktube",
+"com.android.deskclock",
 "com.google.android.youtube",
 "com.google.android.apps.youtube.music",
 "com.google.android.videos",

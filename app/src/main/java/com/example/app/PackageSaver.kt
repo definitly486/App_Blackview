@@ -16,6 +16,7 @@ import java.io.IOException
 fun Context.savePackagesToFile(filename: String): Boolean {
     val packages = listOf(
       "com.blackview.dokegamecenter",
+"com.blackview.ai.imagex",
 "com.blackview.ai.doki",
 "com.blackview.surfline",
 "com.blackview.ai.vidgen",

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:padding="8dp">
+
+    <!-- ScrollView с выводом, занимает всё пространство до EditText -->
+    <ScrollView
+        android:id="@+id/scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/input">
+
+        <TextView
+            android:id="@+id/output"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#00FF00"
+            android:textSize="14sp"
+            android:typeface="monospace" />
+    </ScrollView>
+
+    <!-- Поле ввода всегда внизу экрана -->
+    <EditText
+        android:id="@+id/input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:hint="> "
+        android:textColor="#00FF00"
+        android:textColorHint="#555555"
+        android:backgroundTint="#00FF00"
+        android:singleLine="true"
+        android:typeface="monospace" />
+
+</RelativeLayout>

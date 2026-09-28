@@ -77,7 +77,6 @@ fun Context.savePackagesToFile(filename: String): Boolean {
 "com.google.android.accessibility.switchaccess",
 "com.android.systemui.accessibility.accessibilitymenu",
 "com.google.android.tts",
-"com.android.devicelockcontroller",
 "com.android.DeviceAsWebcam",
 "com.google.android.feedback",
 "com.google.android.partnersetup",
@@ -112,7 +111,6 @@ fun Context.savePackagesToFile(filename: String): Boolean {
 "com.blackview.app.cloudfolder",
 "com.blackview.smscode",
 "com.blackview.themepicker",
-"com.android.devicelockcontroller",
 "com.android.microdroid.empty_payload",
 "com.android.compos.payload",
 "com.android.virtualmachine.res",
@@ -155,11 +153,13 @@ fun Context.savePackagesToFile(filename: String): Boolean {
 "com.blackview.wallpaperpicker.overlay",
 "com.blackview.launcher.overlay.wallpaper_picker",
 "com.blackview.framework.overlay.wallpaper_picker",
+"com.blackview.framework.overlay.common",
 "com.blackview.framework.overlay.dislpay_count",
 "com.android.customization.themes",
 "com.android.avatarpicker",
 "com.android.wallpapercropper",
 "com.google.android.appsearch.apk"
+
 
     ).joinToString("\n")
 

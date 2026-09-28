@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.app.R
 import com.example.app.shell.AdbShell
 import com.example.app.shell.DeviceSetup
+import com.example.app.shell.WifiConnector
 import com.example.app.shell.ShizukuInstaller
 import kotlinx.coroutines.launch
 
@@ -38,6 +39,15 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         btnInstall = view.findViewById(R.id.btnInstallShizuku)
 
         btnInstall.setOnClickListener { installShizuku() }
+
+        view.findViewById<Button>(R.id.btnConnectWifi).setOnClickListener {
+            val result = WifiConnector.connect(
+                requireContext(), DeviceSetup.WIFI_SSID, DeviceSetup.WIFI_PASSWORD
+            )
+            append((if (result.ok) "✓ " else "✗ ") + result.message)
+            Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG).show()
+        }
+
 
         btnRun.setOnClickListener { runSetup() }
         view.findViewById<Button>(R.id.btnOpenShizuku).setOnClickListener { openShizuku() }

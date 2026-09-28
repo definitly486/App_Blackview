@@ -23,6 +23,15 @@
         style="@style/Widget.MaterialComponents.Button" />
 
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnConnectWifi"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Подключиться к Wi-Fi HUAWEI-B315-AFCA"
+        android:backgroundTint="?attr/colorPrimary"
+        style="@style/Widget.MaterialComponents.Button" />
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btnRunSetup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

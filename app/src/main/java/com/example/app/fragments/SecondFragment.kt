@@ -537,7 +537,7 @@ class SecondFragment : Fragment() {
     fun showShizukuRequiredDialog(context: Context) {
         AlertDialog.Builder(context)
             .setTitle("Нужен Shizuku")
-            .setMessage("Shizuku не запущен или нет разрешения. Откройте вкладку «Настройка», приложения не будут удалены.")
+            .setMessage("Удаление пакетов работает только через Shizuku. Установите и запустите его на вкладке «Настройка».")
             .setPositiveButton("Продолжить") { dialog, _ -> dialog.dismiss() }
             .show()
     }

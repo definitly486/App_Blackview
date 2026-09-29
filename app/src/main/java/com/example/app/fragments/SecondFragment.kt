@@ -52,8 +52,10 @@ class SecondFragment : Fragment() {
     private lateinit var downloadHelper2: DownloadHelper2
 
 
+    /** Публичная папка Download: сюда скачивается и здесь лежит main.tar.gz. */
     fun getDownloadFolder(): File? {
-        return context?.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            ?.also { it.mkdirs() }
     }
 
     @SuppressLint("MissingInflatedId")
@@ -108,8 +110,8 @@ class SecondFragment : Fragment() {
 
 
     private fun deleteMAIN(context: Context) {
-        // Получаем приватный каталог "Загрузки"
-        val privateDownloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+        // Публичный каталог Download
+        val privateDownloadsDir = getDownloadFolder()
 
         // Проверяем, существует ли каталог
         if (privateDownloadsDir != null && privateDownloadsDir.exists()) {
@@ -303,7 +305,7 @@ class SecondFragment : Fragment() {
     }
 
     private fun downloadMain() {
-        downloadHelper.downloadFileSimple("https://github.com/definitly486/redmia5/archive/main.tar.gz")
+        downloadHelper.downloadToPublic("https://github.com/definitly486/redmia5/archive/main.tar.gz")
     }
 
     private fun setWallpaper(imagePath: String) {

@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.app.R
 import com.example.app.shell.AdbShell
+import com.example.app.shell.BlockPermissions
 import com.example.app.shell.DeviceSetup
 import com.example.app.shell.WifiConnector
 import com.example.app.shell.ShizukuInstaller
@@ -28,6 +29,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     private lateinit var scroll: ScrollView
     private lateinit var btnRun: Button
     private lateinit var btnInstall: Button
+    private lateinit var btnBlock: Button
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -37,6 +39,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         scroll = view.findViewById(R.id.setupScroll)
         btnRun = view.findViewById(R.id.btnRunSetup)
         btnInstall = view.findViewById(R.id.btnInstallShizuku)
+        btnBlock = view.findViewById(R.id.btnBlockPermissions)
 
         btnInstall.setOnClickListener { installShizuku() }
 
@@ -49,7 +52,8 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         }
 
 
-        btnRun.setOnClickListener { runSetup() }
+        btnRun.setOnClickListener { runSteps(DeviceSetup.steps) }
+        btnBlock.setOnClickListener { runSteps(BlockPermissions.steps) }
         view.findViewById<Button>(R.id.btnOpenShizuku).setOnClickListener { openShizuku() }
 
         refreshStatus()
@@ -84,7 +88,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         }
     }
 
-    private fun runSetup() {
+    private fun runSteps(steps: List<DeviceSetup.Step>) {
         val appContext = requireContext().applicationContext
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -101,9 +105,9 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
             refreshStatus()
 
             btnRun.isEnabled = false
+            btnBlock.isEnabled = false
             log.text = ""
 
-            val steps = DeviceSetup.steps
             var okCount = 0
             steps.forEachIndexed { index, step ->
                 val result = AdbShell.exec(appContext, step.command)
@@ -118,6 +122,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
 
             append("\nГотово: $okCount из ${steps.size}")
             btnRun.isEnabled = true
+            btnBlock.isEnabled = true
         }
     }
 

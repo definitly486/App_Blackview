@@ -41,6 +41,15 @@
         style="@style/Widget.MaterialComponents.Button" />
 
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnBlockPermissions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Заблокировать фон, уведомления и геолокацию"
+        android:backgroundTint="?attr/colorPrimary"
+        style="@style/Widget.MaterialComponents.Button" />
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btnOpenShizuku"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -305,7 +305,7 @@ class SecondFragment : Fragment() {
     }
 
     private fun downloadMain() {
-        downloadHelper.downloadToPublic("https://github.com/definitly486/redmia5/archive/main.tar.gz")
+        downloadHelper.downloadToPublic("https://github.com/definitly486/BlackviewActive5/archive/main.tar.gz")
     }
 
     private fun setWallpaper(imagePath: String) {

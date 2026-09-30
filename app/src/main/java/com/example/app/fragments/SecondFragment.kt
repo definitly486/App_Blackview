@@ -128,17 +128,17 @@ class SecondFragment : Fragment() {
             }
 
             // Папка redmia5-main
-            val folderToDelete = privateDownloadsDir.resolve("redmia5-main")
+            val folderToDelete = privateDownloadsDir.resolve("BlackviewActive5-main")
             if (folderToDelete.exists()) {
                 if (deleteDirectory(folderToDelete)) {
-                    Toast.makeText(requireContext(), "Папка 'redmia5-main' успешно удалена!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Папка 'BlackviewActive5-main' успешно удалена!", Toast.LENGTH_SHORT).show()
 
                 } else {
-                    Toast.makeText(requireContext(), "Ошибка при удалении папки 'redmia5-main'.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Ошибка при удалении папки 'BlackviewActive5-main'.", Toast.LENGTH_SHORT).show()
 
                 }
             } else {
-                Toast.makeText(requireContext(), "Папка 'redmia5-main' не найдена.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Папка 'BlackviewActive5-main' не найдена.", Toast.LENGTH_SHORT).show()
 
             }
         } else {

@@ -261,9 +261,15 @@ object SdcardApkInstaller {
 
             val quotedPath = shellQuote(path)
 
+            // Файл читает сам shell (cat) и передаёт его в pm через pipe.
+            // Нельзя ни "pm install <путь>", ни "pm install < файл": в обоих случаях
+            // system_server получает доступ к fuse-файлу SD/USB, а SELinux это
+            // запрещает (avc: denied { read } / Failed transaction).
+            // Pipe — обычный дескриптор shell, его system_server читать может.
             val result = AdbShell.exec(
                 app,
-                "pm install -r $quotedPath"
+                "sz=\$(wc -c < $quotedPath) && " +
+                    "cat $quotedPath | pm install -r -S \"\$sz\""
             )
 
             if (
@@ -283,13 +289,17 @@ object SdcardApkInstaller {
 
             } else {
 
+                // Берём причину (Failure / Exception / SecurityException ...),
+                // а не хвост стектрейса вида "at android.os.Binder.execTransact".
                 val errorMessage =
                     result.output
                         .lineSequence()
                         .map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                        .lastOrNull()
-                        ?: "ошибка установки"
+                        .filter { it.isNotEmpty() && !it.startsWith("at ") }
+                        .take(3)
+                        .joinToString(" | ")
+                        .take(300)
+                        .ifEmpty { "ошибка установки (код ${result.exitCode})" }
 
                 failed += "$name — $errorMessage"
 

@@ -72,6 +72,16 @@ object SdcardApkInstaller {
 
         val app = context.applicationContext
 
+        // Shizuku запущен, но разрешение ещё не выдано — запрашиваем его,
+        // чтобы установка шла тихо (pm install), а не через окно подтверждения.
+        if (
+            AdbShell.isRunning() &&
+            !AdbShell.hasPermission()
+        ) {
+            onProgress("Запрос разрешения Shizuku...")
+            AdbShell.requestPermission()
+        }
+
         return if (
             AdbShell.isRunning() &&
             AdbShell.hasPermission()

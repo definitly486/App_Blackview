@@ -28,6 +28,10 @@ object DeviceSetup {
         Step("Автоопределение часового пояса: выкл", "settings put global auto_time_zone 0"),
         Step("Часовой пояс: Europe/Moscow", "cmd alarm set-timezone Europe/Moscow"),
         Step("Клавиатура OpenBoard: включить", "ime enable $IME"),
-        Step("Клавиатура OpenBoard: выбрать", "ime set $IME")
+        Step("Клавиатура OpenBoard: выбрать", "ime set $IME"),
+        Step("Кнопка питания: долгое нажатие → меню выключения/перезагрузки",
+            "settings put global power_button_long_press 1"),
+        Step("Кнопка питания: очень долгое нажатие → без действия",
+            "settings put global power_button_very_long_press 0")
     )
 }

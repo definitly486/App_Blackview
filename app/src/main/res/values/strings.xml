@@ -77,4 +77,13 @@
     <string name="installpsb">Установить ПСБ-Банк </string>
     <string name="installamnezia" >Установить AmneziaVPN </string>
 
+
+    <string name="gpg_decryptor">GPG Decryptor</string>
+    <string name="gpg_no_file">Файл не выбран</string>
+    <string name="gpg_selected">Выбран: %1$s</string>
+    <string name="gpg_select_file">Выбрать .gpg файл</string>
+    <string name="gpg_password_hint">Пароль</string>
+    <string name="gpg_decrypt">Расшифровать</string>
+    <string name="gpg_decrypting">Расшифровка…</string>
+    <string name="gpg_success">Готово! Сохранено в Загрузки: %1$s (нажми, чтобы открыть)</string>
 </resources>

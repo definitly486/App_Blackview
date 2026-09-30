@@ -13,6 +13,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
 import com.example.app.fragments.FirstFragment
+import com.example.app.fragments.GpgDecryptFragment
 import com.example.app.fragments.NinthFragment
 import com.example.app.fragments.SecondFragment
 import com.example.app.fragments.SetupFragment
@@ -31,6 +32,7 @@ class MainActivity : AppCompatActivity() {
         SixthFragment(),
         SeventhFragment(),
         NinthFragment(),
+        GpgDecryptFragment(),
         TenthFragment(),
         TerminalFragment(),
         SetupFragment()
@@ -38,7 +40,7 @@ class MainActivity : AppCompatActivity() {
 
     private val buttonTitles = listOf(
         "Первая", "Вторая", "Третья", "Git Clone", "Седьмая",
-        "OpenSSL Decryptor", "Десятая", "Terminal", "Настройка"
+        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Настройка"
     )
 
     private var selectedButton: Button? = null

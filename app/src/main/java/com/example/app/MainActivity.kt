@@ -21,6 +21,7 @@ import com.example.app.fragments.SixthFragment
 import com.example.app.fragments.TenthFragment
 import com.example.app.fragments.TerminalFragment
 import com.example.app.fragments.ThirdFragment
+import com.example.app.fragments.VideoModeFragment
 
 class MainActivity : AppCompatActivity() {
 
@@ -33,12 +34,13 @@ class MainActivity : AppCompatActivity() {
         NinthFragment(),
         TenthFragment(),
         TerminalFragment(),
-        SetupFragment()
+        SetupFragment(),
+        VideoModeFragment()
     )
 
     private val buttonTitles = listOf(
         "Первая", "Вторая", "Третья", "Git Clone", "Седьмая",
-        "OpenSSL Decryptor", "Десятая", "Terminal", "Настройка"
+        "OpenSSL Decryptor", "Десятая", "Terminal", "Настройка", "Видеорежим"
     )
 
     private var selectedButton: Button? = null

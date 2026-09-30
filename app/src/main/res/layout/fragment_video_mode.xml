@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Режим видеоплеера"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:padding="12dp" />
+
+    <TextView
+        android:id="@+id/videoModeStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Проверка Shizuku…"
+        android:textSize="15sp"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:padding="16dp" />
+
+    <Button
+        android:id="@+id/btnFreezeVideoMode"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="ЗАМОРОЗИТЬ"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp" />
+
+    <Button
+        android:id="@+id/btnUnfreezeVideoMode"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="РАЗМОРОЗИТЬ"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginTop="12dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Во время заморозки: фоновые приложения останавливаются и suspend'ятся; Wi‑Fi, мобильные данные и Bluetooth отключаются. SystemUI, графика, звук, ввод, хранилище и mpv остаются доступны."
+        android:textSize="13sp"
+        android:textColor="#DDFFFFFF"
+        android:padding="16dp" />
+
+</LinearLayout>

@@ -30,6 +30,26 @@ object ShizukuInstaller {
         data class Error(val message: String) : Result()
     }
 
+    /**
+     * Удаление Shizuku через системный диалог удаления (подтверждает пользователь).
+     * Через Shizuku удалять его самого нельзя: сервис завершится вместе с пакетом.
+     */
+    fun uninstall(context: Context): Result {
+        val app = context.applicationContext
+        if (!isInstalled(app)) return Result.Error("Shizuku не установлен")
+        return try {
+            app.startActivity(
+                Intent(Intent.ACTION_DELETE).apply {
+                    data = Uri.parse("package:$PACKAGE")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+            Result.Started
+        } catch (e: Exception) {
+            Result.Error(e.message ?: e.javaClass.simpleName)
+        }
+    }
+
     fun install(context: Context): Result {
         val app = context.applicationContext
 

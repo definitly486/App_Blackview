@@ -1,5 +1,6 @@
 package com.example.app.fragments
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -30,6 +31,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     private lateinit var btnRun: Button
     private lateinit var btnInstall: Button
     private lateinit var btnBlock: Button
+    private lateinit var btnUninstall: Button
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -41,7 +43,10 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         btnInstall = view.findViewById(R.id.btnInstallShizuku)
         btnBlock = view.findViewById(R.id.btnBlockPermissions)
 
+        btnUninstall = view.findViewById(R.id.btnUninstallShizuku)
+
         btnInstall.setOnClickListener { installShizuku() }
+        btnUninstall.setOnClickListener { confirmUninstallShizuku() }
 
         view.findViewById<Button>(R.id.btnConnectWifi).setOnClickListener {
             val result = WifiConnector.connect(
@@ -74,8 +79,23 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         }
     }
 
+    private fun confirmUninstallShizuku() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Удалить Shizuku?")
+            .setMessage("После удаления команды с правами shell перестанут работать, пока Shizuku не будет установлен и запущен снова.")
+            .setPositiveButton("Удалить") { _, _ ->
+                val r = ShizukuInstaller.uninstall(requireContext())
+                if (r is ShizukuInstaller.Result.Error) {
+                    Toast.makeText(requireContext(), "Ошибка: ${r.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
     private fun refreshStatus() {
         val installed = ShizukuInstaller.isInstalled(requireContext())
+        btnUninstall.isEnabled = installed
         btnInstall.text = if (installed) "Переустановить Shizuku" else "Установить Shizuku"
         status.text = when {
             !installed ->

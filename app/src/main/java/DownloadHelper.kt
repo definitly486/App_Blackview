@@ -7,6 +7,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -44,6 +46,29 @@ class DownloadHelper(private val context: Context) {
 
     // endregion
 
+    // region === Проверка сети ===
+
+    /** true, если есть активное подключение к интернету через Wi-Fi, мобильную сеть или Ethernet */
+    fun isNetworkAvailable(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+    }
+
+    /** Показывает тост и возвращает false, если интернета нет */
+    private fun ensureNetwork(): Boolean {
+        if (isNetworkAvailable()) return true
+        toast("Нет подключения к интернету (Wi-Fi или мобильная сеть)", long = true)
+        return false
+    }
+
+    // endregion
+
     // region === Публичные методы загрузки ===
 
     /** Загрузка APK в стандартную папку приложения */
@@ -65,18 +90,9 @@ class DownloadHelper(private val context: Context) {
             destinationDir = appApkDir(),
             subDirName = "APK",
             expectedExtension = "apk",
-            onExists = { file, _ ->
-                Log.d("DownloadHelper", "Файл уже существует: ${file?.name}")
-                onComplete?.invoke(file)
-            },
-            onSuccess = { file, _ ->
-                Log.d("DownloadHelper", "Файл успешно загружен: ${file?.name}")
-                onComplete?.invoke(file)
-            },
-
-            onComplete = {
-                Log.d("DownloadHelper", "downloadFile завершен")
-            }
+            onExists = { file, _ -> Log.d("DownloadHelper", "Файл уже существует: ${file.name}") },
+            onSuccess = { file, _ -> Log.d("DownloadHelper", "Файл успешно загружен: ${file.name}") },
+            onComplete = onComplete
         )
     }
 
@@ -112,6 +128,8 @@ class DownloadHelper(private val context: Context) {
             toast("Файл уже существует")
             return
         }
+
+        if (!ensureNetwork()) return
 
         enqueue(
             url = url,
@@ -152,6 +170,11 @@ class DownloadHelper(private val context: Context) {
             toast("Файл уже существует")
             onExists?.invoke(targetFile, fileName)
             onComplete?.invoke(targetFile)
+            return
+        }
+
+        if (!ensureNetwork()) {
+            onComplete?.invoke(null)
             return
         }
 

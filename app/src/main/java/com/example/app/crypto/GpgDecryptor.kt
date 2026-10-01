@@ -14,44 +14,64 @@ import org.bouncycastle.openpgp.operator.jcajce.JcePBEDataDecryptorFactoryBuilde
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
-import java.security.Security
 
 /**
  * Symmetric OpenPGP/GPG decryption using Bouncy Castle.
  *
  * Supports:
  * - gpg --symmetric
- * - compressed PGP data
+ * - binary GPG files
+ * - ASCII-armored PGP files
+ * - compressed data
  * - encrypted + signed messages
- * - ASCII armored and binary GPG input
+ *
+ * Signature verification is intentionally not performed here.
+ * This class is responsible only for decrypting the data.
  */
 class GpgDecryptor {
 
     /**
      * Decrypts a symmetric OpenPGP/GPG stream.
- *
-     * The caller owns the input/output streams and is responsible for
-     * closing them.
+     *
+     * The caller owns the input/output streams and is responsible
+     * for closing them.
      */
     fun decrypt(
         input: InputStream,
         output: OutputStream,
         passphrase: CharArray
     ) {
-        ensureProvider()
-
         PGPUtil.getDecoderStream(input).use { decoder ->
+
             val encryptedData = findEncryptedData(decoder)
+
+            /*
+             * IMPORTANT:
+             *
+             * Do not use setProvider("BC") here.
+             *
+             * Android can already have a provider registered under
+             * the name "BC". That provider may not be the same
+             * Bouncy Castle implementation bundled with the app and
+             * can cause errors such as:
+             *
+             * "No such algorithm SHA-256 for provider BC"
+             *
+             * Passing the actual BouncyCastleProvider instance
+             * avoids the provider-name collision.
+             */
+            val provider = BouncyCastleProvider()
 
             val decryptor = JcePBEDataDecryptorFactoryBuilder(
                 JcaPGPDigestCalculatorProviderBuilder()
-                    .setProvider(BC_PROVIDER)
+                    .setProvider(provider)
                     .build()
             )
-                .setProvider(BC_PROVIDER)
+                .setProvider(provider)
                 .build(passphrase)
 
             encryptedData.getDataStream(decryptor).use { clear ->
+
                 val literal = findLiteralData(clear)
 
                 literal.inputStream.use { literalInput ->
@@ -60,7 +80,12 @@ class GpgDecryptor {
 
                 output.flush()
 
-                if (encryptedData.isIntegrityProtected &&
+                /*
+                 * Verify the integrity packet after all plaintext
+                 * has been read.
+                 */
+                if (
+                    encryptedData.isIntegrityProtected &&
                     !encryptedData.verify()
                 ) {
                     throw PGPException(
@@ -81,30 +106,42 @@ class GpgDecryptor {
     ) {
         inputFile.inputStream().use { input ->
             outputFile.outputStream().use { output ->
-                decrypt(input, output, passphrase)
+                decrypt(
+                    input,
+                    output,
+                    passphrase
+                )
             }
         }
     }
 
     /**
-     * Compatibility API for callers using streams and a CharArray password.
+     * Compatibility API used by GpgDecryptFragment.
      */
     fun decryptGpgSymmetric(
         input: InputStream,
         output: OutputStream,
         passphrase: CharArray
     ) {
-        decrypt(input, output, passphrase)
+        decrypt(
+            input,
+            output,
+            passphrase
+        )
     }
 
     /**
-     * Compatibility API retained for existing file-path callers.
+     * Compatibility API for existing callers using file paths
+     * and a String password.
+     *
+     * Returns true when decryption succeeds, false otherwise.
      */
     fun decryptGpgSymmetric(
         inputFilePath: String,
         outputFilePath: String,
         passphrase: String
     ): Boolean = runCatching {
+
         val chars = passphrase.toCharArray()
 
         try {
@@ -116,15 +153,23 @@ class GpgDecryptor {
         } finally {
             chars.fill('\u0000')
         }
+
     }.isSuccess
 
     /**
-     * Finds the symmetric encrypted data packet.
+     * Finds the symmetric password-based encrypted packet.
      */
-    private fun findEncryptedData(input: InputStream): PGPPBEEncryptedData {
+    private fun findEncryptedData(
+        input: InputStream
+    ): PGPPBEEncryptedData {
+
         val factory = JcaPGPObjectFactory(input)
+
         var objectValue = factory.nextObject()
 
+        /*
+         * Skip packets before PGPEncryptedDataList.
+         */
         while (
             objectValue != null &&
             objectValue !is PGPEncryptedDataList
@@ -137,6 +182,12 @@ class GpgDecryptor {
                 "Это не зашифрованный GPG-файл"
             )
 
+        /*
+         * GPG may contain several encrypted data objects.
+         *
+         * We specifically need password-based encryption:
+         * PGPPBEEncryptedData.
+         */
         val objects = encryptedList.encryptedDataObjects
 
         while (objects.hasNext()) {
@@ -148,31 +199,59 @@ class GpgDecryptor {
         }
 
         throw IllegalArgumentException(
-            "Файл зашифрован не паролем (симметрично), а публичным ключом"
+            "Файл зашифрован не паролем (симметрично), " +
+                "а публичным ключом"
         )
     }
 
     /**
-     * Walks through compressed/signed PGP packets until the actual
-     * literal file data is found.
+     * Walks through the decrypted PGP packet structure until
+     * the actual file data (PGPLiteralData) is found.
      *
-     * One-pass signatures are intentionally ignored here.
-     * This class is responsible for decryption, not signature verification.
+     * Supported structure examples:
+     *
+     * PGPCompressedData
+     *     -> PGPLiteralData
+     *
+     * PGPCompressedData
+     *     -> PGPOnePassSignatureList
+     *     -> PGPLiteralData
+     *
+     * One-pass signatures are intentionally ignored.
+     * We only need to extract the decrypted file contents.
      */
-    private fun findLiteralData(input: InputStream): PGPLiteralData {
-        var currentFactory = JcaPGPObjectFactory(input)
-        var objectValue = currentFactory.nextObject()
+    private fun findLiteralData(
+        input: InputStream
+    ): PGPLiteralData {
+
+        var factory = JcaPGPObjectFactory(input)
+        var objectValue = factory.nextObject()
 
         while (objectValue != null) {
+
             when (objectValue) {
+
                 is PGPCompressedData -> {
-                    currentFactory =
-                        JcaPGPObjectFactory(objectValue.dataStream)
-                    objectValue = currentFactory.nextObject()
+                    /*
+                     * Enter the compressed packet and continue
+                     * parsing its contents.
+                     */
+                    factory = JcaPGPObjectFactory(
+                        objectValue.dataStream
+                    )
+
+                    objectValue = factory.nextObject()
                 }
 
                 is PGPOnePassSignatureList -> {
-                    objectValue = currentFactory.nextObject()
+                    /*
+                     * The message is signed.
+                     *
+                     * Signature verification is outside the scope
+                     * of this decryptor, so skip the signature packet
+                     * and continue to the actual file data.
+                     */
+                    objectValue = factory.nextObject()
                 }
 
                 is PGPLiteralData -> {
@@ -180,23 +259,18 @@ class GpgDecryptor {
                 }
 
                 else -> {
-                    objectValue = currentFactory.nextObject()
+                    /*
+                     * Skip unrelated packets and continue searching
+                     * for the literal data packet.
+                     */
+                    objectValue = factory.nextObject()
                 }
             }
         }
 
         throw IllegalArgumentException(
-            "В расшифрованном GPG-файле не найдено содержимое файла"
+            "В расшифрованном GPG-файле " +
+                "не найдено содержимое файла"
         )
-    }
-
-    private fun ensureProvider() {
-        if (Security.getProvider(BC_PROVIDER) == null) {
-            Security.addProvider(BouncyCastleProvider())
-        }
-    }
-
-    private companion object {
-        const val BC_PROVIDER = "BC"
     }
 }

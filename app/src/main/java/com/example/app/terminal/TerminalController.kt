@@ -25,6 +25,33 @@ class TerminalController(context: Context) {
 
     var onOutput: ((String) -> Unit)? = null
 
+    /**
+     * Simple shell commands that can be entered directly,
+     * without the "shell" prefix.
+     */
+    private val directShellCommands = setOf(
+        "uname",
+        "whoami",
+        "id",
+        "pwd",
+        "ls",
+        "date",
+        "uptime",
+        "df",
+        "du",
+        "free",
+        "ps",
+        "env",
+        "printenv",
+        "getprop",
+        "mount",
+        "id",
+        "which",
+        "cat",
+        "head",
+        "tail"
+    )
+
     fun printWelcome() {
         emit("Android Shell Terminal v1.0")
         emit("Type 'help' for available commands")
@@ -42,14 +69,25 @@ class TerminalController(context: Context) {
 
         when {
             commandLine.startsWith("shell ") ->
-                executeShellCommand(commandLine.removePrefix("shell ").trim())
+                executeShellCommand(
+                    commandLine.removePrefix("shell ").trim()
+                )
 
             commandLine.startsWith("adb ") ->
-                executeAdbCommand(commandLine.removePrefix("adb ").trim())
+                executeAdbCommand(
+                    commandLine.removePrefix("adb ").trim()
+                )
 
             else -> {
                 val parts = commandLine.split(Regex("\\s+"))
-                emit(registry.execute(parts.first(), parts.drop(1)))
+                val command = parts.first()
+                val args = parts.drop(1)
+
+                if (command in directShellCommands) {
+                    executeShellCommand(commandLine)
+                } else {
+                    emit(registry.execute(command, args))
+                }
             }
         }
     }
@@ -67,18 +105,32 @@ class TerminalController(context: Context) {
                         .redirectErrorStream(true)
                         .start()
                         .let { process ->
-                            val output = process.inputStream.bufferedReader().use { it.readText() }
+                            val output = process.inputStream
+                                .bufferedReader()
+                                .use { it.readText() }
+
                             val exitCode = process.waitFor()
+
                             buildString {
-                                if (output.isNotBlank()) append(output.trimEnd())
+                                if (output.isNotBlank()) {
+                                    append(output.trimEnd())
+                                }
+
                                 if (exitCode != 0) {
-                                    if (isNotEmpty()) append('\n')
+                                    if (isNotEmpty()) {
+                                        append('\n')
+                                    }
+
                                     append("(код возврата: $exitCode)")
                                 }
                             }
                         }
-                }.getOrElse { "Error executing command: ${it.message ?: it.javaClass.simpleName}" }
+                }.getOrElse {
+                    "Error executing command: " +
+                        (it.message ?: it.javaClass.simpleName)
+                }
             }
+
             emit(result)
         }
     }
@@ -91,13 +143,22 @@ class TerminalController(context: Context) {
             }
 
             if (!AdbShell.hasPermission()) {
-                emit("Нет разрешения Shizuku. Выдайте его на вкладке «Настройка».")
+                emit(
+                    "Нет разрешения Shizuku. " +
+                        "Выдайте его на вкладке «Настройка»."
+                )
                 return@launch
             }
 
             val result = AdbShell.exec(appContext, command)
-            if (result.output.isNotBlank()) emit(result.output)
-            if (!result.ok) emit("(код возврата: ${result.exitCode})")
+
+            if (result.output.isNotBlank()) {
+                emit(result.output)
+            }
+
+            if (!result.ok) {
+                emit("(код возврата: ${result.exitCode})")
+            }
         }
     }
 

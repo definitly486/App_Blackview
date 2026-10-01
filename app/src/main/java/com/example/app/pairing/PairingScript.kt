@@ -41,6 +41,8 @@ class PairingScript(private val svc: PairingAccessibilityService) {
             "pairing code", "код подключения", "кода подключения", "коду подключения",
             "код сопряжения", "кода сопряжения"
         )
+        val NOTIF_BTN = arrayOf("Notification settings", "Настройки уведомлений")
+        const val PERM_ALLOW_ID = "permission_allow_button"
         val ALLOW_NETWORK = arrayOf("Allow", "Разрешить")
         val ENTER_CODE = arrayOf("Enter pairing code", "Введите код подключения", "Введите код сопряжения")
         val SEND = arrayOf("Send", "Отправить")
@@ -179,6 +181,9 @@ class PairingScript(private val svc: PairingAccessibilityService) {
         } ?: return
         svc.click(pairBtn)
 
+        // 1.5. Без разрешения на уведомления Shizuku прячет инструкцию и не покажет поле для кода
+        if (!ensureShizukuNotifications()) return
+
         // 2. Shizuku → Параметры разработчика
         say("2/6 Открываю параметры разработчика")
         val dev = waitFor(
@@ -222,6 +227,73 @@ class PairingScript(private val svc: PairingAccessibilityService) {
 
         backToApp()
         say("✓ Готово: Shizuku работает, команды доступны")
+    }
+
+    private fun notifBannerButton(): AccessibilityNodeInfo? =
+        svc.first { it.pkg() == SHIZUKU && it.eq(*NOTIF_BTN) }
+
+    /**
+     * Если на экране «Сопряжение» красная плашка «выдайте Shizuku разрешение на показ уведомлений» —
+     * жмёт «Настройки уведомлений», включает переключатель и возвращается в Shizuku.
+     * Заодно соглашается на системный запрос POST_NOTIFICATIONS, если он появился.
+     */
+    private suspend fun ensureShizukuNotifications(): Boolean {
+        val seen = waitFor("экран сопряжения Shizuku", 10_000, silent = true) {
+            // системный запрос «Разрешить Shizuku отправлять уведомления?»
+            svc.first { it.rid().endsWith(PERM_ALLOW_ID) }?.let { svc.click(it) }
+            when {
+                notifBannerButton() != null -> "banner"
+                devOptionsButton() != null -> "ok"
+                else -> null
+            }
+        }
+        if (seen != "banner") return true
+
+        say("   Shizuku просит разрешить уведомления — включаю")
+        repeat(3) {
+            val btn = notifBannerButton() ?: return true.also { say("   ✓ уведомления Shizuku включены") }
+            svc.click(btn)
+            delay(1_200)
+            enableNotificationSwitch()
+            backToShizukuScreen()
+            delay(800)
+        }
+        if (notifBannerButton() == null) {
+            say("   ✓ уведомления Shizuku включены")
+            return true
+        }
+        say("   ✗ не удалось включить уведомления Shizuku — включите вручную и повторите")
+        say("   на экране: ${svc.dumpScreen()}")
+        return false
+    }
+
+    /** На странице уведомлений Shizuku включает выключенные переключатели (сверху вниз, не более 3). */
+    private suspend fun enableNotificationSwitch() {
+        val end = now() + 12_000
+        val idleLimit = now() + 4_000
+        var clicks = 0
+        while (now() < end && clicks < 3) {
+            svc.first { it.rid().endsWith(PERM_ALLOW_ID) }?.let { svc.click(it); delay(700) }
+            val sw = svc.collect { it.inSettings() && it.isCheckable && !it.isChecked && it.isEnabled }
+                .minByOrNull { it.top() }
+            if (sw != null) {
+                svc.click(sw)
+                clicks++
+                delay(900)
+            } else {
+                if (clicks > 0 || now() > idleLimit) break
+                delay(400)
+            }
+        }
+    }
+
+    /** Выходит из «Настроек» назад в Shizuku кнопкой «Назад» (запуск заново сбросил бы экран сопряжения). */
+    private suspend fun backToShizukuScreen() {
+        repeat(5) {
+            if (svc.first { it.inSettings() } == null && shizukuVisible()) return
+            svc.back()
+            delay(700)
+        }
     }
 
     /** Кнопка запуска именно в карточке «Запуск через беспроводную отладку» (а не в карточке root). */

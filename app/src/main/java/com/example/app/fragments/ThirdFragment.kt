@@ -166,7 +166,7 @@ class ThirdFragment : Fragment() {
 
     private fun cloneDcimToDownloads() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-            showToast("Разрешите доступ ко всем файлам для записи в /storage/emulated/0/download")
+            showToast("Разрешите доступ ко всем файлам для записи в /storage/emulated/0/download/dcim")
             runCatching {
                 startActivity(
                     Intent(
@@ -178,12 +178,12 @@ class ThirdFragment : Fragment() {
             return
         }
 
-        showToast("Клонирование GitHub DCIM в /storage/emulated/0/download…")
+        showToast("Клонирование GitHub DCIM в /storage/emulated/0/download/dcim…")
 
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val downloadDir = File("/storage/emulated/0/download")
+                    val downloadDir = File("/storage/emulated/0/download/dcim")
                     if (!downloadDir.exists() && !downloadDir.mkdirs()) {
                         error("Не удалось создать /storage/emulated/0/download")
                     }
@@ -208,7 +208,7 @@ class ThirdFragment : Fragment() {
             }
 
             result.onSuccess {
-                showToast("Репозиторий DCIM успешно клонирован в /storage/emulated/0/download")
+                showToast("Репозиторий DCIM успешно клонирован в /storage/emulated/0/download/dcim")
             }.onFailure { e ->
                 showToast("Ошибка клонирования DCIM: ${e.message ?: e.javaClass.simpleName}")
             }

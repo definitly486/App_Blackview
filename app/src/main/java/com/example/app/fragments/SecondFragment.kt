@@ -305,6 +305,19 @@ class SecondFragment : Fragment() {
     }
 
     private fun downloadMain() {
+        val folder = getDownloadFolder()
+        if (folder == null) {
+            Toast.makeText(requireContext(), "Нет доступа к папке Download", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Если архив уже скачан — повторно не загружаем
+        val tarGzFile = File(folder, "main.tar.gz")
+        if (tarGzFile.exists()) {
+            Toast.makeText(requireContext(), "Файл main.tar.gz уже существует", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         downloadHelper.downloadToPublic("https://github.com/definitly486/BlackviewActive5/archive/main.tar.gz")
     }
 

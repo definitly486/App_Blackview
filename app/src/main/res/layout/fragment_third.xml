@@ -119,6 +119,19 @@
             tools:ignore="UsingOnClickInXml,VisualLintButtonSize" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/self_uninstall"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Удалить приложение"
+            app:icon="@drawable/ic_warning_24"
+            app:iconGravity="start"
+            app:iconPadding="8dp"
+            app:iconTint="@null"
+            android:backgroundTint="?attr/colorPrimary"
+            style="@style/Widget.MaterialComponents.Button"
+            tools:ignore="UsingOnClickInXml,VisualLintButtonSize" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/poweroff"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -49,6 +49,7 @@ class ThirdFragment : Fragment() {
         rebootButton(view)
         powerofButton(view)
         deletedefinitlygnucahButton(view)
+        setupSelfUninstallButton(view)
         return view
     }
 
@@ -63,6 +64,21 @@ class ThirdFragment : Fragment() {
             val apkUrl1 = "https://github.com/xinitronix/gnucash/raw/refs/heads/main/definitly.gnucash.gpg"
             downloadHelper.downloadToPublic(apkUrl1)
 
+        }
+    }
+
+    private fun setupSelfUninstallButton(view: View) {
+        view.findViewById<Button>(R.id.self_uninstall).setOnClickListener {
+            val packageUri = Uri.parse("package:${requireContext().packageName}")
+            val intent = Intent(Intent.ACTION_DELETE, packageUri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            runCatching {
+                startActivity(intent)
+            }.onFailure {
+                showToast("Не удалось открыть удаление приложения")
+            }
         }
     }
 

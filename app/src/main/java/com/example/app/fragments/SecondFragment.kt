@@ -2,7 +2,7 @@
 
 package com.example.app.fragments
 
-import DownloadHelper
+import com.example.app.download.DownloadHelper
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.DialogInterface

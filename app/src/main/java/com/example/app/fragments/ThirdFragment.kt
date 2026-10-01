@@ -2,7 +2,10 @@
 
 package com.example.app.fragments
 
-import DownloadHelper
+import com.example.app.crypto.GpgDecryptor
+import com.example.app.git.GitRepositoryCloner
+
+import com.example.app.download.DownloadHelper
 import android.os.Bundle
 import android.os.Environment
 import android.view.LayoutInflater
@@ -16,17 +19,13 @@ import androidx.lifecycle.lifecycleScope
 import com.example.app.R
 import com.example.app.shell.AdbShell
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
 
 class ThirdFragment : Fragment() {
 
     private lateinit var downloadHelper: DownloadHelper
-    private lateinit var downloadHelper2: DownloadHelper2
 
     private lateinit var editTextPasswordgnucash: EditText
 
@@ -38,7 +37,6 @@ class ThirdFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_third, container, false)
         downloadHelper = DownloadHelper(requireContext())
-        downloadHelper2 = DownloadHelper2(requireContext())
         editTextPasswordgnucash = view.findViewById(R.id.editTextPasswordgnucash)
         setupInstallButton(view)
         setupDownloadNoteButton(view)
@@ -49,6 +47,11 @@ class ThirdFragment : Fragment() {
         powerofButton(view)
         deletedefinitlygnucahButton(view)
         return view
+    }
+
+    override fun onDestroyView() {
+        downloadHelper.cleanup()
+        super.onDestroyView()
     }
 
     private fun setupInstallButton(view: View) {
@@ -96,49 +99,40 @@ class ThirdFragment : Fragment() {
 
 
     private fun decryptGnucasgpgpButton(view: View) {
-        val installButton = view.findViewById<Button>(R.id.decryptgnucashgpg)
-
-        installButton.setOnClickListener { _ ->
-
-            //проверка существоания gnupg
-
-            //   isGnupgBinaryExists ()
-
-            // Получаем введённый пароль из EditText поля
-            val enteredPassword = editTextPasswordgnucash.text.toString().trim() // trim удалит лишние пробелы
-
-            // Проверяем наличие пароля
-            if (enteredPassword.isBlank()) {
+        view.findViewById<Button>(R.id.decryptgnucashgpg).setOnClickListener {
+            val password = editTextPasswordgnucash.text.toString()
+            if (password.isBlank()) {
                 showToast("Пароль не введен. Пожалуйста, введите пароль.")
                 return@setOnClickListener
             }
 
-            // Создаем экземпляр помощника для работы с PGP-шифрованием
-            val helper = GPGHelper()
+            val downloads = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            )
+            val input = File(downloads, "definitly.gnucash.gpg")
+            val output = File(downloads, "definitly.gnucash")
 
-            try {
-                // Расшифровка файла с использованием переданного пароля
-                //   val isDecryptedSuccessfully = helper.decryptFile(
-                //        "/storage/emulated/0/Download/definitly.gnucash.gpg",
-                //       "/storage/emulated/0/Download/definitly.gnucash",
-                //        enteredPassword
-                //   )
-
-                val isDecryptedSuccessfully = helper.decryptGpgSymmetric(
-                    "/storage/emulated/0/Download/definitly.gnucash.gpg",
-                    "/storage/emulated/0/Download/definitly.gnucash",
-                    enteredPassword
-                )
-
-
-                if (isDecryptedSuccessfully) {
-                    showToast("Файл успешно расшифрован.")
-                } else {
-                    showToast("Ошибка при расшифровке файла.")
+            lifecycleScope.launch {
+                val success = withContext(Dispatchers.IO) {
+                    val chars = password.toCharArray()
+                    try {
+                        GpgDecryptor().decrypt(input, output, chars)
+                        true
+                    } catch (_: Exception) {
+                        output.delete()
+                        false
+                    } finally {
+                        chars.fill('\u0000')
+                    }
                 }
-            } catch (exception: Exception) {
-                // Обрабатываем возможные исключения, возникающие при шифровании
-                showToast("Ошибка при обработке файла: ${exception.localizedMessage}")
+
+                showToast(
+                    if (success) {
+                        "Файл успешно расшифрован."
+                    } else {
+                        "Ошибка при расшифровке файла."
+                    }
+                )
             }
         }
     }
@@ -164,12 +158,7 @@ class ThirdFragment : Fragment() {
         val gitCloneButton = view.findViewById<Button>(R.id.gitclonedcim)
         gitCloneButton.setOnClickListener {
             lifecycleScope.launch {
-                val gitCloneJob = async(Dispatchers.IO) { handleGitCloneOperation() }
-                val success = gitCloneJob.await() // Ждём завершения клонирования и получаем результат
-
-                if (!success) {
-                    Toast.makeText(context, "Ошибка клонирования.", Toast.LENGTH_SHORT).show()
-                }
+                handleGitCloneOperation()
             }
         }
     }
@@ -184,18 +173,20 @@ class ThirdFragment : Fragment() {
 
 
     private suspend fun handleGitCloneOperation(): Boolean {
-        val gitClone = GitClone()
-        return withContext(Dispatchers.IO) {
-            val result = gitClone.cloneRepository()
-            if (result.isSuccess) {
+        val result = GitRepositoryCloner(requireContext()).clone(
+            repositoryUrl = "https://github.com/definitly486/DCIM"
+        )
+
+        return result.fold(
+            onSuccess = {
                 showToast("Репозиторий успешно клонирован.")
-                return@withContext true
-            } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
-                showToast("Ошибка клонирования: $errorMessage")
-                return@withContext false
+                true
+            },
+            onFailure = {
+                showToast("Ошибка клонирования: ${it.message ?: "Неизвестная ошибка"}")
+                false
             }
-        }
+        )
     }
 
     private fun rebootButton(view: View) {

@@ -1,5 +1,6 @@
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 plugins {
     alias(libs.plugins.android.application)
@@ -22,17 +23,17 @@ android {
 
         buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
 
-        val gitBranch = gitBranch()
-        val gitCommitShort = gitCommitShort()
-        val gitCommitFull = gitCommitFull()
+        val gitBranch = safeGitLabel(gitBranch())
+        val gitCommitShort = safeGitLabel(gitCommitShort())
+        val gitCommitFull = safeGitLabel(gitCommitFull())
 
         versionNameSuffix = "-$gitBranch"
 
-        buildConfigField("String", "GIT_BRANCH", "\"$gitBranch\"")
-        buildConfigField("String", "GIT_COMMIT_SHORT", "\"$gitCommitShort\"")
-        buildConfigField("String", "GIT_COMMIT_FULL", "\"$gitCommitFull\"")
-        buildConfigField("String", "VERSION_NAME_SUFFIX", "\"-$gitBranch\"")
-        buildConfigField("String", "FULL_VERSION_NAME", "\"$versionName-$gitBranch\"")
+        buildConfigField("String", "GIT_BRANCH", quoteBuildConfig(gitBranch))
+        buildConfigField("String", "GIT_COMMIT_SHORT", quoteBuildConfig(gitCommitShort))
+        buildConfigField("String", "GIT_COMMIT_FULL", quoteBuildConfig(gitCommitFull))
+        buildConfigField("String", "VERSION_NAME_SUFFIX", quoteBuildConfig("-$gitBranch"))
+        buildConfigField("String", "FULL_VERSION_NAME", quoteBuildConfig("$versionName-$gitBranch"))
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -48,7 +49,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             isDebuggable = false
-            signingConfig = signingConfigs.getByName("debug")   // ← обязательно!
+            // Release builds are signed by the release pipeline/Android Studio.
             applicationIdSuffix = null
             versionNameSuffix = null
 
@@ -89,55 +90,51 @@ android.applicationVariants.all {
 }
 
 fun getDate(): String =
-    SimpleDateFormat("yyyyMMdd_HHmm").format(Date())
+    SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())
+
+private fun gitBranch() = runGitCommand("rev-parse", "--abbrev-ref", "HEAD")
+private fun gitCommitShort() = runGitCommand("rev-parse", "--short", "HEAD")
+private fun gitCommitFull() = runGitCommand("rev-parse", "HEAD")
+
+private fun runGitCommand(vararg args: String): String =
+    try {
+        providers.exec {
+            commandLine("git", *args)
+            workingDir = project.rootProject.projectDir
+        }.standardOutput.asText.get().trim().takeIf {
+            it.isNotEmpty() && it != "HEAD"
+        } ?: "unknown"
+    } catch (_: Exception) {
+        "unknown"
+    }
+
+private fun safeGitLabel(value: String): String =
+    value.replace(Regex("[^A-Za-z0-9._-]"), "-").trim('-').ifBlank { "unknown" }
+
+private fun quoteBuildConfig(value: String): String = "\"" + value + "\""
 
 
-
-// === Git-функции ===
-private fun gitBranch() = runGitCommand("git rev-parse --abbrev-ref HEAD") ?: "unknown"
-private fun gitCommitShort() = runGitCommand("git rev-parse --short HEAD") ?: "unknown"
-private fun gitCommitFull() = runGitCommand("git rev-parse HEAD") ?: "unknown"
-
-private fun runGitCommand(command: String): String? = try {
-    providers.exec {
-        commandLine(command.split(" "))
-        workingDir = project.rootProject.projectDir
-    }.standardOutput.asText.get().trim().takeIf { it.isNotEmpty() && it != "HEAD" } ?: "unknown"
-} catch (e: Exception) {
-    "unknown"
-}
-
-
-
-
-// ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
-// ВОТ ЭТОТ БЛОК ОБЯЗАТЕЛЬНО ДОЛЖЕН БЫТЬ В КОНЦЕ ФАЙЛА!
 dependencies {
-    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
-    implementation("org.bouncycastle:bcpg-jdk18on:1.78.1")
-    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
-    implementation("com.google.android.material:material:1.11.0")
+    implementation(libs.bouncycastle.provider)
+    implementation(libs.bouncycastle.pgp)
+    implementation(libs.bouncycastle.pkix)
 
-    // Shizuku: запуск команд «как adb shell» на устройстве без root
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
-
-    // Если используешь Version Catalog (libs.xxx) — оставь так:
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.material)
     implementation(libs.org.eclipse.jgit)
     implementation(libs.androidx.viewpager2)
     implementation(libs.commons.compress)
+    implementation(libs.xz)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.fragment.ktx)
-    implementation(libs.xz)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.runtime.saved.instance.state)
+
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
-// ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←

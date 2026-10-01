@@ -20,15 +20,29 @@ viewpager2 = "1.1.0"
 xz = "1.10"
 runtimeSavedInstanceState = "1.0.0-alpha11"
 
+# Added for missing dependencies
+
+bouncycastle = "1.82"
+lifecycle = "2.9.4"
+shizuku = "13.1.5"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragmentKtx" }
 androidx-viewpager2 = { module = "androidx.viewpager2:viewpager2", version.ref = "viewpager2" }
+
 bcpg-jdk15on = { module = "org.bouncycastle:bcpg-jdk15on", version.ref = "bcpgJdk15to18" }
 bcpg-jdk15to18 = { module = "org.bouncycastle:bcpg-jdk15to18", version.ref = "bcpgJdk15to18" }
 bcprov-jdk15on = { module = "org.bouncycastle:bcprov-jdk15on", version.ref = "bcprovJdk15on" }
 bcprov-jdk15on-v182 = { module = "org.bouncycastle:bcprov-jdk15on", version.ref = "bcprovJdk15onVersion" }
 bcprov-jdk15to18 = { module = "org.bouncycastle:bcprov-jdk15to18", version.ref = "bcpgJdk15to18" }
+
+# Aliases used by app/build.gradle.kts
+
+bouncycastle-provider = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-pgp = { module = "org.bouncycastle:bcpg-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
+
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commonsCompress" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
@@ -42,7 +56,15 @@ org-eclipse-jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref =
 xz = { module = "org.tukaani:xz", version.ref = "xz" }
 androidx-runtime-saved-instance-state = { group = "androidx.compose.runtime", name = "runtime-saved-instance-state", version.ref = "runtimeSavedInstanceState" }
 
+# Lifecycle
+
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
+
+# Shizuku
+
+shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
+shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-

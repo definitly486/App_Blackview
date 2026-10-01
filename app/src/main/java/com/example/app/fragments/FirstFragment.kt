@@ -2,7 +2,7 @@
 
 package com.example.app.fragments
 
-import DownloadHelper
+import com.example.app.download.DownloadHelper
 
 import android.os.Bundle
 import android.view.LayoutInflater

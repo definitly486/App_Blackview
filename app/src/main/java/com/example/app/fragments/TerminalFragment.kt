@@ -1,6 +1,5 @@
 package com.example.app.fragments
 
-import TerminalController
 import android.content.Context
 import android.os.Bundle
 import android.view.View
@@ -9,6 +8,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.example.app.R
+import com.example.app.terminal.TerminalController
 
 
 class TerminalFragment : Fragment(R.layout.fragment_terminal) {
@@ -23,6 +23,11 @@ class TerminalFragment : Fragment(R.layout.fragment_terminal) {
         super.onAttach(context)
         // Передаем контекст в TerminalController при присоединении фрагмента
         controller = TerminalController(context)
+    }
+
+    override fun onDestroyView() {
+        controller.close()
+        super.onDestroyView()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

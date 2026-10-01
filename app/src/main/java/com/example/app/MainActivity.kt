@@ -11,7 +11,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.setPadding
-import androidx.fragment.app.Fragment
 import com.example.app.fragments.FirstFragment
 import com.example.app.fragments.GpgDecryptFragment
 import com.example.app.fragments.NinthFragment
@@ -25,17 +24,17 @@ import com.example.app.fragments.ThirdFragment
 
 class MainActivity : AppCompatActivity() {
 
-    private val fragmentList = listOf(
-        FirstFragment(),
-        SecondFragment(),
-        ThirdFragment(),
-        SixthFragment(),
-        SeventhFragment(),
-        NinthFragment(),
-        GpgDecryptFragment(),
-        TenthFragment(),
-        TerminalFragment(),
-        SetupFragment()
+    private val fragmentFactories = listOf(
+        ::FirstFragment,
+        ::SecondFragment,
+        ::ThirdFragment,
+        ::SixthFragment,
+        ::SeventhFragment,
+        ::NinthFragment,
+        ::GpgDecryptFragment,
+        ::TenthFragment,
+        ::TerminalFragment,
+        ::SetupFragment
     )
 
     private val buttonTitles = listOf(
@@ -69,7 +68,7 @@ class MainActivity : AppCompatActivity() {
         setupActionButtons(savedInstanceState)
 
         if (savedInstanceState == null) {
-            openFragment(fragmentList[0], buttonTitles[0])
+            openFragment(0)
         }
     }
 
@@ -105,7 +104,7 @@ class MainActivity : AppCompatActivity() {
                 selectedButton?.isSelected = false
                 button.isSelected = true
                 selectedButton = button
-                openFragment(fragmentList[index], title)
+                openFragment(index)
             }
 
             buttonsContainer.addView(button)
@@ -116,16 +115,17 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (savedIndex in fragmentList.indices) {
-            openFragment(fragmentList[savedIndex], buttonTitles[savedIndex])
+        if (savedInstanceState != null && savedIndex in fragmentFactories.indices) {
+            openFragment(savedIndex)
         }
     }
 
-    private fun openFragment(fragment: Fragment, title: String) {
+    private fun openFragment(index: Int) {
+        if (index !in fragmentFactories.indices) return
+
         supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, fragment)
+            .replace(R.id.fragmentContainer, fragmentFactories[index].invoke())
             .setReorderingAllowed(true)
-            .addToBackStack(title)
             .commit()
     }
 

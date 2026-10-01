@@ -23,12 +23,13 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.app.R
+import com.example.app.crypto.GpgDecryptor
+import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.bouncycastle.openpgp.PGPDataValidationException
-import java.io.File
-import java.io.IOException
 
 /**
  * Вкладка "GPG Decryptor": расшифровка файла, зашифрованного GPG с паролем
@@ -136,7 +137,7 @@ class GpgDecryptFragment : Fragment() {
                         ?: throw IOException("Не удалось открыть выбранный файл")
                     input.use { ins ->
                         tmp.outputStream().use { outs ->
-                            GPGHelper().decryptGpgSymmetric(ins.buffered(), outs, password)
+                            GpgDecryptor().decryptGpgSymmetric(ins.buffered(), outs, password)
                         }
                     }
                     // 2. Успех — копируем в Загрузки

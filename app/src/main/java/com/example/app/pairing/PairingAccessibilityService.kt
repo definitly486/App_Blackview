@@ -128,7 +128,8 @@ class PairingAccessibilityService : AccessibilityService() {
         return tap(node)
     }
 
-    private fun tap(node: AccessibilityNodeInfo): Boolean {
+    /** Тап строго по координатам центра узла (не поднимается к родителю, как click). */
+    fun tap(node: AccessibilityNodeInfo): Boolean {
         val r = Rect()
         node.getBoundsInScreen(r)
         if (r.isEmpty) return false

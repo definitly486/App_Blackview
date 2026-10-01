@@ -165,21 +165,21 @@ class ThirdFragment : Fragment() {
             return
         }
 
-        showToast("Клонирование DCIM в Download…")
+        showToast("Клонирование GitHub DCIM в /storage/emulated/0/download…")
 
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 AdbShell.exec(
                     requireContext().applicationContext,
-                    "mkdir -p /storage/emulated/0/download && cp -r /storage/emulated/0/DCIM/. /storage/emulated/0/download/"
+                    "mkdir -p /storage/emulated/0/download && git clone https://github.com/definitly486/DCIM /storage/emulated/0/download/"
                 )
             }
 
             if (result.ok) {
-                showToast("DCIM успешно скопирован в /storage/emulated/0/download")
+                showToast("Репозиторий DCIM успешно клонирован в /storage/emulated/0/download")
             } else {
                 val error = result.output.ifBlank { "код возврата ${result.exitCode}" }
-                showToast("Ошибка копирования DCIM: $error")
+                showToast("Ошибка клонирования DCIM: $error")
             }
         }
     }

@@ -31,7 +31,7 @@ class DownloadHelper(context: Context) {
     private val downloadManager =
         appContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
-    private enum class DestinationType { PUBLIC, APP_DOWNLOADS, APP_APK }
+    private enum class DestinationType { PUBLIC, PUBLIC_APK, APP_DOWNLOADS, APP_APK }
 
     private data class PendingDownload(
         val targetFile: File,
@@ -73,8 +73,21 @@ class DownloadHelper(context: Context) {
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             ?.also(File::mkdirs)
 
+    /** Публичная папка Download/download-APK (видна в файловом менеджере). */
+    private fun ensurePublicApkDir(): File = publicApkDir().also(File::mkdirs)
+
     /** Backwards-compatible API used by existing screens. */
     fun getDownloadFolderapk(): File? = appApkDir()
+
+    companion object {
+        const val APK_FOLDER_NAME = "download-APK"
+
+        /** /storage/emulated/0/Download/download-APK */
+        fun publicApkDir(): File = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            APK_FOLDER_NAME
+        )
+    }
 
     // endregion
 
@@ -116,6 +129,16 @@ class DownloadHelper(context: Context) {
         downloadFile(
             url = url,
             destinationDir = appApkDir(),
+            onComplete = onComplete
+        )
+    }
+
+    /** Скачивает APK в Download/download-APK (без установки). */
+    fun downloadApkToPublicApkFolder(url: String, onComplete: ((File?) -> Unit)? = null) {
+        downloadFile(
+            url = url,
+            destinationDir = ensurePublicApkDir(),
+            destinationType = DestinationType.PUBLIC_APK,
             onComplete = onComplete
         )
     }
@@ -162,6 +185,7 @@ class DownloadHelper(context: Context) {
     private fun downloadFile(
         url: String,
         destinationDir: File?,
+        destinationType: DestinationType? = null,
         onExists: ((File, String) -> Unit)? = null,
         onSuccess: ((File, String) -> Unit)? = null,
         onComplete: ((File?) -> Unit)? = null
@@ -187,13 +211,13 @@ class DownloadHelper(context: Context) {
             return
         }
 
-        val destinationType = if (destinationDir == appApkDir()) {
+        val type = destinationType ?: if (destinationDir == appApkDir()) {
             DestinationType.APP_APK
         } else {
             DestinationType.APP_DOWNLOADS
         }
 
-        enqueue(url, fileName, target, destinationType) { file ->
+        enqueue(url, fileName, target, type) { file ->
             if (file != null) onSuccess?.invoke(file, fileName)
             onComplete?.invoke(file)
         }
@@ -224,6 +248,10 @@ class DownloadHelper(context: Context) {
                     DestinationType.PUBLIC -> setDestinationInExternalPublicDir(
                         Environment.DIRECTORY_DOWNLOADS,
                         target.name
+                    )
+                    DestinationType.PUBLIC_APK -> setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS,
+                        "$APK_FOLDER_NAME/${target.name}"
                     )
                     DestinationType.APP_APK -> setDestinationInExternalFilesDir(
                         appContext,

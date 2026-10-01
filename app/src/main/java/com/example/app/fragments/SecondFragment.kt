@@ -279,27 +279,61 @@ class SecondFragment : Fragment() {
             val result = downloadSingleAPK(url)
             handleResult(result, index + 1)
         }
-        Log.d("DownloadSequence", "Все файлы успешно обработаны!")
-        ApkAutoInstaller.installAutoAPK(context)
+        Log.d("DownloadSequence", "Все файлы обработаны, запускаю установку")
+        val summary = ApkAutoInstaller.installAutoAPK(context)
+        showInstallSummary(summary)
+    }
+
+    /** Итог установки + запрос недостающих разрешений. */
+    private fun showInstallSummary(summary: ApkAutoInstaller.Summary) {
+        val ctx = context?.applicationContext ?: return
+        when (summary.error) {
+            ApkAutoInstaller.ERROR_NEED_INSTALL_PERMISSION -> {
+                Toast.makeText(ctx, "Разрешите установку из этого приложения и нажмите кнопку ещё раз", Toast.LENGTH_LONG).show()
+                ctx.startActivity(
+                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+            ApkAutoInstaller.ERROR_NEED_ALL_FILES -> {
+                Toast.makeText(ctx, "Разрешите доступ ко всем файлам и нажмите кнопку ещё раз", Toast.LENGTH_LONG).show()
+                ctx.startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${ctx.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+            null -> {
+                val mode = if (summary.viaShizuku) "Shizuku" else "системный установщик"
+                val text = buildString {
+                    append("Установлено: ${summary.installed}, уже были: ${summary.skipped} ($mode)")
+                    if (summary.failed.isNotEmpty()) {
+                        append("\nНе удалось: ${summary.failed.joinToString()}")
+                    }
+                }
+                Toast.makeText(ctx, text, Toast.LENGTH_LONG).show()
+            }
+            else -> Toast.makeText(ctx, summary.error, Toast.LENGTH_LONG).show()
+        }
     }
 
     suspend fun downloadSingleAPK(url: String): File? {
         return suspendCancellableCoroutine { continuation ->
-            downloadHelper.downloadApkToApkFolder(url) { file ->
+            downloadHelper.downloadApkToPublicApkFolder(url) { file ->
                 continuation.resumeWith(Result.success(file))
             }
         }
     }
 
     fun handleResult(file: File?, index: Int) {
+        val ctx = context ?: return
         if (file != null) {
             Toast.makeText(
-                requireContext(),
+                ctx,
                 "Файл №$index загружен: ${file.name}",
                 Toast.LENGTH_SHORT
             ).show()
         } else {
-            Toast.makeText(requireContext(), "Ошибка загрузки файла №$index", Toast.LENGTH_SHORT)
+            Toast.makeText(ctx, "Ошибка загрузки файла №$index", Toast.LENGTH_SHORT)
                 .show()
         }
     }

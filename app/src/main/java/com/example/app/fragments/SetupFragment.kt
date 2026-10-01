@@ -1,6 +1,8 @@
 package com.example.app.fragments
 
 import android.app.AlertDialog
+import android.content.Intent
+import android.provider.Settings
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -8,8 +10,11 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.app.R
+import com.example.app.pairing.PairingAutomation
 import com.example.app.shell.AdbShell
 import com.example.app.shell.BlockPermissions
 import com.example.app.shell.DeviceSetup
@@ -30,6 +35,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     private lateinit var btnInstall: Button
     private lateinit var btnBlock: Button
     private lateinit var btnUninstall: Button
+    private lateinit var btnPair: Button
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -42,6 +48,20 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         btnBlock = view.findViewById(R.id.btnBlockPermissions)
 
         btnUninstall = view.findViewById(R.id.btnUninstallShizuku)
+        btnPair = view.findViewById(R.id.btnAutoPair)
+
+        btnPair.setOnClickListener { onPairClicked() }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { PairingAutomation.log.collect { append(it) } }
+                launch {
+                    PairingAutomation.running.collect { running ->
+                        btnPair.text = if (running) "Остановить сопряжение" else "Сопряжение (авто)"
+                        if (!running) refreshStatus()
+                    }
+                }
+            }
+        }
 
         btnInstall.setOnClickListener { installShizuku() }
         btnUninstall.setOnClickListener { confirmUninstallShizuku() }
@@ -65,6 +85,32 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     override fun onResume() {
         super.onResume()
         if (view != null) refreshStatus()
+    }
+
+    /** Одна кнопка: Shizuku → «Сопряжение» → код из настроек → уведомление → «Запустить» → «Разрешить всегда». */
+    private fun onPairClicked() {
+        if (PairingAutomation.running.value) {
+            PairingAutomation.stop()
+            return
+        }
+        when (PairingAutomation.start()) {
+            PairingAutomation.StartResult.STARTED -> log.text = ""
+            PairingAutomation.StartResult.ALREADY_RUNNING -> Unit
+            PairingAutomation.StartResult.SERVICE_DISABLED ->
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Включите службу доступности")
+                    .setMessage(
+                        "Один раз включите «App Blackview — сопряжение Shizuku» в Специальных возможностях " +
+                            "(Установленные службы), затем снова нажмите «Сопряжение (авто)».\n\n" +
+                            "Если пункт недоступен: Настройки → Приложения → App Blackview → ⋮ → " +
+                            "«Разрешить ограниченные настройки»."
+                    )
+                    .setPositiveButton("Открыть") { _, _ ->
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
+                    .setNegativeButton("Отмена", null)
+                    .show()
+        }
     }
 
     private fun installShizuku() {

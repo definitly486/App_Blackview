@@ -68,5 +68,20 @@
             </intent-filter>
         </activity>
 
+
+        <!-- Служба доступности для автосопряжения Shizuku (кнопка «Сопряжение» на вкладке «Настройка») -->
+        <service
+            android:name=".pairing.PairingAccessibilityService"
+            android:exported="true"
+            android:label="@string/pairing_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/pairing_accessibility_config" />
+        </service>
+
     </application>
 </manifest>

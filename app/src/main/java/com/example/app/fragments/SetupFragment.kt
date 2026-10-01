@@ -1,8 +1,6 @@
 package com.example.app.fragments
 
 import android.app.AlertDialog
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -152,13 +150,28 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     }
 
     private fun openShizuku() {
-        val pm = requireContext().packageManager
-        val launch = pm.getLaunchIntentForPackage(ShizukuInstaller.PACKAGE)
-        val intent = launch ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/download/"))
+        val ctx = requireContext()
+
+        if (!ShizukuInstaller.isInstalled(ctx)) {
+            AlertDialog.Builder(ctx)
+                .setTitle("Shizuku не установлен")
+                .setMessage("Сначала нужно установить Shizuku (APK вшит в приложение). Установить сейчас?")
+                .setPositiveButton("Установить") { _, _ -> installShizuku() }
+                .setNegativeButton("Отмена", null)
+                .show()
+            refreshStatus()
+            return
+        }
+
+        val intent = ctx.packageManager.getLaunchIntentForPackage(ShizukuInstaller.PACKAGE)
+        if (intent == null) {
+            Toast.makeText(ctx, "У Shizuku нет окна запуска", Toast.LENGTH_SHORT).show()
+            return
+        }
         try {
             startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Не удалось открыть Shizuku", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, "Не удалось открыть Shizuku", Toast.LENGTH_SHORT).show()
         }
     }
 }

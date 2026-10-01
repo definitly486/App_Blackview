@@ -26,7 +26,7 @@
     <string name="installopenssl">Установить OpenSSL </string>
     <string name="downloadmain">Скачать main.tar.gz </string>
     <string name="unpackmain">Распаковать main.tar.gz </string>
-    <string name="gitclonedcim">Клонирование DCIM </string>
+    <string name="gitclonedcim">Клонировать DCIM в Download</string>
     <string name="installcore">Уставновить Core Music Player </string>
     <string name="installpluma">Установить Pluma </string>
     <string name="installtelegramx">Установить Telegram X  </string>

@@ -3,8 +3,6 @@
 package com.example.app.fragments
 
 import com.example.app.crypto.GpgDecryptor
-import com.example.app.git.GitRepositoryCloner
-
 import com.example.app.download.DownloadHelper
 import android.os.Bundle
 import android.os.Environment
@@ -155,38 +153,35 @@ class ThirdFragment : Fragment() {
 
 
     private fun setupGitCloneButton(view: View) {
-        val gitCloneButton = view.findViewById<Button>(R.id.gitclonedcim)
-        gitCloneButton.setOnClickListener {
-            lifecycleScope.launch {
-                handleGitCloneOperation()
-            }
+        val cloneButton = view.findViewById<Button>(R.id.gitclonedcim)
+        cloneButton.setOnClickListener {
+            cloneDcimToDownloads()
         }
     }
 
+    private fun cloneDcimToDownloads() {
+        if (!AdbShell.isRunning() || !AdbShell.hasPermission()) {
+            showToast("Shizuku не запущен или нет разрешения (вкладка «Настройка»)")
+            return
+        }
 
+        showToast("Клонирование DCIM в Download…")
 
-
-
-
-
-
-
-
-    private suspend fun handleGitCloneOperation(): Boolean {
-        val result = GitRepositoryCloner(requireContext()).clone(
-            repositoryUrl = "https://github.com/definitly486/DCIM"
-        )
-
-        return result.fold(
-            onSuccess = {
-                showToast("Репозиторий успешно клонирован.")
-                true
-            },
-            onFailure = {
-                showToast("Ошибка клонирования: ${it.message ?: "Неизвестная ошибка"}")
-                false
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                AdbShell.exec(
+                    requireContext().applicationContext,
+                    "mkdir -p /storage/emulated/0/download && cp -r /storage/emulated/0/DCIM/. /storage/emulated/0/download/"
+                )
             }
-        )
+
+            if (result.ok) {
+                showToast("DCIM успешно скопирован в /storage/emulated/0/download")
+            } else {
+                val error = result.output.ifBlank { "код возврата ${result.exitCode}" }
+                showToast("Ошибка копирования DCIM: $error")
+            }
+        }
     }
 
     private fun rebootButton(view: View) {

@@ -159,7 +159,12 @@ fun Context.savePackagesToFile(filename: String): Boolean {
 "com.android.customization.themes",
 "com.android.avatarpicker",
 "com.android.wallpapercropper",
-"com.google.android.appsearch.apk"
+"com.google.android.appsearch.apk",
+"com.blackview.theme.icon.oil",
+"com.blackview.theme.icon.koi",
+"com.blackview.theme.icon.vortex",
+"com.blackview.theme.icon.clearwave",
+"com.blackview.theme.icon.blance"
 
     ).joinToString("\n")
 

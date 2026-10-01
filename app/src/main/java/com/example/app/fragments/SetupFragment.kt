@@ -76,11 +76,48 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         btnUninstall.setOnClickListener { confirmUninstallShizuku() }
 
         view.findViewById<Button>(R.id.btnConnectWifi).setOnClickListener {
+            val context = requireContext().applicationContext
             val result = WifiConnector.connect(
-                requireContext(), DeviceSetup.WIFI_SSID, DeviceSetup.WIFI_PASSWORD
+                context, DeviceSetup.WIFI_SSID, DeviceSetup.WIFI_PASSWORD
             )
+
             append((if (result.ok) "✓ " else "✗ ") + result.message)
-            Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG).show()
+
+            if (result.ok) {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    if (AdbShell.isRunning() && AdbShell.hasPermission()) {
+                        append("↻ Перезапуск Wi-Fi для применения настроек...")
+
+                        val disable = AdbShell.exec(context, "cmd wifi set-wifi-enabled disabled")
+                        kotlinx.coroutines.delay(1000)
+                        val enable = AdbShell.exec(context, "cmd wifi set-wifi-enabled enabled")
+
+                        if (disable.ok && enable.ok) {
+                            append("✓ Wi-Fi перезапущен, настройки применены")
+                            Toast.makeText(
+                                context,
+                                "Wi-Fi перезапущен, настройки применены",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            append("✗ Не удалось автоматически перезапустить Wi-Fi")
+                            Toast.makeText(
+                                context,
+                                "Сеть добавлена, но Wi-Fi не удалось перезапустить автоматически",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            result.message,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } else {
+                Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+            }
         }
 
 

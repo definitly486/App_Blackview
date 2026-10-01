@@ -36,6 +36,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     private lateinit var btnBlock: Button
     private lateinit var btnUninstall: Button
     private lateinit var btnPair: Button
+    private lateinit var btnUnlockDev: Button
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -50,14 +51,22 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         btnUninstall = view.findViewById(R.id.btnUninstallShizuku)
         btnPair = view.findViewById(R.id.btnAutoPair)
 
+        btnUnlockDev = view.findViewById(R.id.btnUnlockDev)
+
         btnPair.setOnClickListener { onPairClicked() }
+        btnUnlockDev.setOnClickListener { onUnlockDevClicked() }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { PairingAutomation.log.collect { append(it) } }
                 launch {
-                    PairingAutomation.running.collect { running ->
-                        btnPair.text = if (running) "Остановить сопряжение" else "Сопряжение (авто)"
-                        if (!running) refreshStatus()
+                    PairingAutomation.task.collect { task ->
+                        btnPair.text = if (task == PairingAutomation.Task.PAIR)
+                            "Остановить сопряжение" else "Сопряжение (авто)"
+                        btnUnlockDev.text = if (task == PairingAutomation.Task.DEV_UNLOCK)
+                            "Остановить" else "Разблокировать меню разработчика"
+                        btnPair.isEnabled = task == null || task == PairingAutomation.Task.PAIR
+                        btnUnlockDev.isEnabled = task == null || task == PairingAutomation.Task.DEV_UNLOCK
+                        if (task == null) refreshStatus()
                     }
                 }
             }
@@ -88,12 +97,17 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     }
 
     /** Одна кнопка: Shizuku → «Сопряжение» → код из настроек → уведомление → «Запустить» → «Разрешить всегда». */
-    private fun onPairClicked() {
+    private fun onPairClicked() = startTask { PairingAutomation.start() }
+
+    /** Одна кнопка: «О телефоне» → 7 нажатий на «Номер сборки» → меню разработчика включено. */
+    private fun onUnlockDevClicked() = startTask { PairingAutomation.startDeveloperUnlock() }
+
+    private fun startTask(start: () -> PairingAutomation.StartResult) {
         if (PairingAutomation.running.value) {
             PairingAutomation.stop()
             return
         }
-        when (PairingAutomation.start()) {
+        when (start()) {
             PairingAutomation.StartResult.STARTED -> log.text = ""
             PairingAutomation.StartResult.ALREADY_RUNNING -> Unit
             PairingAutomation.StartResult.SERVICE_DISABLED ->
@@ -101,7 +115,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
                     .setTitle("Включите службу доступности")
                     .setMessage(
                         "Один раз включите «App Blackview — сопряжение Shizuku» в Специальных возможностях " +
-                            "(Установленные службы), затем снова нажмите «Сопряжение (авто)».\n\n" +
+                            "(Установленные службы), затем снова нажмите нужную кнопку.\n\n" +
                             "Если пункт недоступен: Настройки → Приложения → App Blackview → ⋮ → " +
                             "«Разрешить ограниченные настройки»."
                     )

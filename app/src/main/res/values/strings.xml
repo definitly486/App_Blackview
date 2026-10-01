@@ -87,5 +87,5 @@
     <string name="gpg_decrypting">Расшифровка…</string>
     <string name="gpg_success">Готово! Сохранено в Загрузки: %1$s (нажми, чтобы открыть)</string>
     <string name="pairing_service_label">App Blackview — сопряжение Shizuku</string>
-    <string name="pairing_service_description">Нужна кнопке «Сопряжение (авто)»: читает код сопряжения в настройках и нажимает кнопки в Shizuku. Работает только пока идёт сопряжение.</string>
+    <string name="pairing_service_description">Нужна кнопкам «Сопряжение (авто)» и «Разблокировать меню разработчика»: читает код сопряжения, нажимает кнопки в Shizuku и «Номер сборки» в настройках. Работает только пока выполняется сценарий.</string>
 </resources>

@@ -26,11 +26,17 @@ object PairingAutomation {
 
     enum class StartResult { STARTED, SERVICE_DISABLED, ALREADY_RUNNING }
 
+    /** Какой сценарий сейчас выполняется. */
+    enum class Task { PAIR, DEV_UNLOCK }
+
     private val _log = MutableSharedFlow<String>(extraBufferCapacity = 256)
     val log: SharedFlow<String> = _log
 
     private val _running = MutableStateFlow(false)
     val running: StateFlow<Boolean> = _running
+
+    private val _task = MutableStateFlow<Task?>(null)
+    val task: StateFlow<Task?> = _task
 
     private var job: Job? = null
 
@@ -38,14 +44,24 @@ object PairingAutomation {
         _log.tryEmit(line)
     }
 
-    fun start(): StartResult {
+    /** Сопряжение Shizuku. */
+    fun start(): StartResult = launch(Task.PAIR) { PairingScript(it).run() }
+
+    /** Включение меню разработчика (7 нажатий на «Номер сборки»). */
+    fun startDeveloperUnlock(): StartResult = launch(Task.DEV_UNLOCK) { DeveloperUnlockScript(it).run() }
+
+    private fun launch(
+        t: Task,
+        block: suspend (PairingAccessibilityService) -> Unit
+    ): StartResult {
         val service = PairingAccessibilityService.instance ?: return StartResult.SERVICE_DISABLED
         if (job?.isActive == true) return StartResult.ALREADY_RUNNING
 
+        _task.value = t
         _running.value = true
         job = service.scope.launch {
             try {
-                PairingScript(service).run()
+                block(service)
             } catch (e: CancellationException) {
                 say("■ Остановлено")
                 throw e
@@ -53,6 +69,7 @@ object PairingAutomation {
                 say("✗ Ошибка: ${e.message ?: e.javaClass.simpleName}")
             } finally {
                 _running.value = false
+                _task.value = null
             }
         }
         return StartResult.STARTED

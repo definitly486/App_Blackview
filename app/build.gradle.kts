@@ -45,19 +45,20 @@ android {
             isDebuggable = true
         }
 
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            isDebuggable = false
-            // Release builds are signed by the release pipeline/Android Studio.
-            applicationIdSuffix = null
-            versionNameSuffix = null
+      release {
+    signingConfig = signingConfigs.getByName("debug")
 
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
+    isMinifyEnabled = true
+    isShrinkResources = true
+    isDebuggable = false
+    applicationIdSuffix = null
+    versionNameSuffix = null
+
+    proguardFiles(
+        getDefaultProguardFile("proguard-android-optimize.txt"),
+        "proguard-rules.pro"
+    )
+}
     }
 
     compileOptions {
@@ -85,7 +86,7 @@ android.applicationVariants.all {
         val version = versionName
 
         (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-            "app_redmi_a5_${buildTypeName}_v${version}_${date}_${commit}.apk"
+            "app_Blackview_${buildTypeName}_v${version}_${date}_${commit}.apk"
     }
 }
 

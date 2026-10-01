@@ -266,13 +266,17 @@ class SecondFragment : Fragment() {
     suspend fun launchLoadSequence() {
         val urls = listOf(
             "https://github.com/definitly486/redmia5/releases/download/apk/Total_Commander_v.3.50d.apk",
-            "https://github.com/definitly486/redmia5/releases/download/apk/k9mail-13.0.apk",
-            "https://github.com/definitly486/redmia5/releases/download/apk/Google+Authenticator+7.0.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/AmneziaVPN_5.0.3.0_android11+_arm64-v8a.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/app-armeabi-v7a-fdroid-release.apk",
             "https://github.com/definitly486/Lenovo_Tab_3_7_TB3-730X/releases/download/apk/Pluma_.private_fast.browser_1.80_APKPure.apk",
-            "https://github.com/definitly486/Lenovo_Tab_3_7_TB3-730X/releases/download/apk/com.aurora.store_70.apk",
-            "https://github.com/definitly486/Lenovo_TB-X304L/releases/download/apk/ByeByeDPI-arm64-v8a-release.apk",
-            "https://github.com/definitly486/Lenovo_Tab_3_7_TB3-730X/releases/download/apk/Telegram+X+0.27.5.1747-arm64-v8a.apk",
-            "https://github.com/definitly486/redmia5/releases/download/apk/Core+Music+Player_1.0.apk"
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/app-release.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/Clock_2.32-release.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/dialer-fdroid-release.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/Just.Player.v0.12.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/messages-23-foss-release.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/net.sourceforge.opencamera_96.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/Yandex_Maps_17.2.0.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/YTDLnis-1.9.0-armeabi-v7a-github-release.apk"
         )
 
         urls.forEachIndexed { index, url ->

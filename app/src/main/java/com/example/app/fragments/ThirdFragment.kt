@@ -6,6 +6,10 @@ import com.example.app.crypto.GpgDecryptor
 import com.example.app.download.DownloadHelper
 import android.os.Bundle
 import android.os.Environment
+import android.os.Build
+import android.provider.Settings
+import android.content.Intent
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import org.eclipse.jgit.api.Git
 
 class ThirdFragment : Fragment() {
 
@@ -160,8 +165,16 @@ class ThirdFragment : Fragment() {
     }
 
     private fun cloneDcimToDownloads() {
-        if (!AdbShell.isRunning() || !AdbShell.hasPermission()) {
-            showToast("Shizuku не запущен или нет разрешения (вкладка «Настройка»)")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            showToast("Разрешите доступ ко всем файлам для записи в /storage/emulated/0/download")
+            runCatching {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:${requireContext().packageName}")
+                    )
+                )
+            }
             return
         }
 
@@ -169,17 +182,51 @@ class ThirdFragment : Fragment() {
 
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                AdbShell.exec(
-                    requireContext().applicationContext,
-                    "mkdir -p /storage/emulated/0/download && git clone https://github.com/definitly486/DCIM /storage/emulated/0/download/"
-                )
+                runCatching {
+                    val downloadDir = File("/storage/emulated/0/download")
+                    if (!downloadDir.exists() && !downloadDir.mkdirs()) {
+                        error("Не удалось создать /storage/emulated/0/download")
+                    }
+
+                    // JGit выполняет настоящий git clone без Shizuku и без shell/git binary.
+                    // Клонируем во временную папку, затем переносим содержимое репозитория
+                    // прямо в /storage/emulated/0/download/, чтобы там не появился DCIM-main/.
+                    val cloneDir = File(requireContext().cacheDir, "dcim_git_${System.currentTimeMillis()}")
+                    cloneDir.deleteRecursively()
+                    try {
+                        Git.cloneRepository()
+                            .setURI("https://github.com/definitly486/DCIM.git")
+                            .setDirectory(cloneDir)
+                            .call()
+                            .use { }
+
+                        copyDirectoryContents(cloneDir, downloadDir)
+                    } finally {
+                        cloneDir.deleteRecursively()
+                    }
+                }
             }
 
-            if (result.ok) {
+            result.onSuccess {
                 showToast("Репозиторий DCIM успешно клонирован в /storage/emulated/0/download")
+            }.onFailure { e ->
+                showToast("Ошибка клонирования DCIM: ${e.message ?: e.javaClass.simpleName}")
+            }
+        }
+    }
+
+    private fun copyDirectoryContents(source: File, destination: File) {
+        source.listFiles()?.forEach { sourceItem ->
+            val target = File(destination, sourceItem.name)
+            if (sourceItem.isDirectory) {
+                if (!target.exists() && !target.mkdirs()) {
+                    error("Не удалось создать ${target.absolutePath}")
+                }
+                copyDirectoryContents(sourceItem, target)
             } else {
-                val error = result.output.ifBlank { "код возврата ${result.exitCode}" }
-                showToast("Ошибка клонирования DCIM: $error")
+                sourceItem.inputStream().use { input ->
+                    target.outputStream().use { output -> input.copyTo(output) }
+                }
             }
         }
     }

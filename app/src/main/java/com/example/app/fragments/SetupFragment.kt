@@ -136,7 +136,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     /** Одна кнопка: Shizuku → «Сопряжение» → код из настроек → уведомление → «Запустить» → «Разрешить всегда». */
     private fun onPairClicked() = startTask { PairingAutomation.start() }
 
-    /** Одна кнопка: «О телефоне» → 7 нажатий на «Номер сборки» → меню разработчика включено. */
+    /** Одна кнопка: «О телефоне» → 7 нажатий на «Номер сборки» → меню разработчика и отладка по USB включены. */
     private fun onUnlockDevClicked() = startTask { PairingAutomation.startDeveloperUnlock() }
 
     private fun startTask(start: () -> PairingAutomation.StartResult) {

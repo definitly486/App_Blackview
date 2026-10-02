@@ -47,7 +47,7 @@ object PairingAutomation {
     /** Сопряжение Shizuku. */
     fun start(): StartResult = launch(Task.PAIR) { PairingScript(it).run() }
 
-    /** Включение меню разработчика (7 нажатий на «Номер сборки»). */
+    /** Включение меню разработчика (7 нажатий на «Номер сборки») и отладки по USB. */
     fun startDeveloperUnlock(): StartResult = launch(Task.DEV_UNLOCK) { DeveloperUnlockScript(it).run() }
 
     private fun launch(

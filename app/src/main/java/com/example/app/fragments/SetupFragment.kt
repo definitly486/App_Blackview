@@ -37,6 +37,8 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     private lateinit var btnUninstall: Button
     private lateinit var btnPair: Button
     private lateinit var btnUnlockDev: Button
+    private lateinit var btnUsbDebug: Button
+    private lateinit var btnUsbDebugOff: Button
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -52,20 +54,37 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         btnPair = view.findViewById(R.id.btnAutoPair)
 
         btnUnlockDev = view.findViewById(R.id.btnUnlockDev)
+        btnUsbDebug = view.findViewById(R.id.btnUsbDebug)
+        btnUsbDebugOff = view.findViewById(R.id.btnUsbDebugOff)
 
         btnPair.setOnClickListener { onPairClicked() }
         btnUnlockDev.setOnClickListener { onUnlockDevClicked() }
+        btnUsbDebug.setOnClickListener { onUsbDebugClicked() }
+        btnUsbDebugOff.setOnClickListener { onUsbDebugOffClicked() }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { PairingAutomation.log.collect { append(it) } }
+                launch {
+                    PairingAutomation.lines.collect { lines ->
+                        if (lines.isNotEmpty()) {
+                            log.text = lines.joinToString("\n") + "\n"
+                            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                        }
+                    }
+                }
                 launch {
                     PairingAutomation.task.collect { task ->
                         btnPair.text = if (task == PairingAutomation.Task.PAIR)
                             "Остановить сопряжение" else "Сопряжение (авто)"
                         btnUnlockDev.text = if (task == PairingAutomation.Task.DEV_UNLOCK)
                             "Остановить" else "Разблокировать меню разработчика"
+                        btnUsbDebug.text = if (task == PairingAutomation.Task.USB_DEBUG)
+                            "Остановить" else "Включить отладку по USB"
                         btnPair.isEnabled = task == null || task == PairingAutomation.Task.PAIR
                         btnUnlockDev.isEnabled = task == null || task == PairingAutomation.Task.DEV_UNLOCK
+                        btnUsbDebug.isEnabled = task == null || task == PairingAutomation.Task.USB_DEBUG
+                        btnUsbDebugOff.text = if (task == PairingAutomation.Task.USB_DEBUG_OFF)
+                            "Остановить" else "Выключить отладку по USB"
+                        btnUsbDebugOff.isEnabled = task == null || task == PairingAutomation.Task.USB_DEBUG_OFF
                         if (task == null) refreshStatus()
                     }
                 }
@@ -138,6 +157,12 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
 
     /** Одна кнопка: «О телефоне» → 7 нажатий на «Номер сборки» → меню разработчика включено. */
     private fun onUnlockDevClicked() = startTask { PairingAutomation.startDeveloperUnlock() }
+
+    /** Одна кнопка: «Для разработчиков» → переключатель «Отладка по USB» → подтвердить диалог. */
+    private fun onUsbDebugClicked() = startTask { PairingAutomation.startUsbDebug() }
+
+    /** Одна кнопка: «Для разработчиков» → выключить переключатель «Отладка по USB». */
+    private fun onUsbDebugOffClicked() = startTask { PairingAutomation.startUsbDebugOff() }
 
     private fun startTask(start: () -> PairingAutomation.StartResult) {
         if (PairingAutomation.running.value) {

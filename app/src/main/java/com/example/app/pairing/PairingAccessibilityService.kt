@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -27,10 +28,14 @@ object PairingAutomation {
     enum class StartResult { STARTED, SERVICE_DISABLED, ALREADY_RUNNING }
 
     /** Какой сценарий сейчас выполняется. */
-    enum class Task { PAIR, DEV_UNLOCK }
+    enum class Task { PAIR, DEV_UNLOCK, USB_DEBUG, USB_DEBUG_OFF }
 
-    private val _log = MutableSharedFlow<String>(extraBufferCapacity = 256)
-    val log: SharedFlow<String> = _log
+    /**
+     * Лог сценария. Хранится целиком (а не одноразовым потоком), чтобы строки, которые сценарий пишет,
+     * пока приложение свёрнуто (открыты «Настройки»), не терялись и появлялись при возврате.
+     */
+    private val _lines = MutableStateFlow<List<String>>(emptyList())
+    val lines: StateFlow<List<String>> = _lines
 
     private val _running = MutableStateFlow(false)
     val running: StateFlow<Boolean> = _running
@@ -41,7 +46,7 @@ object PairingAutomation {
     private var job: Job? = null
 
     internal fun say(line: String) {
-        _log.tryEmit(line)
+        _lines.update { (it + line).takeLast(500) }
     }
 
     /** Сопряжение Shizuku. */
@@ -50,6 +55,12 @@ object PairingAutomation {
     /** Включение меню разработчика (7 нажатий на «Номер сборки»). */
     fun startDeveloperUnlock(): StartResult = launch(Task.DEV_UNLOCK) { DeveloperUnlockScript(it).run() }
 
+    /** Включение «Отладки по USB» (переключатель в «Для разработчиков»). */
+    fun startUsbDebug(): StartResult = launch(Task.USB_DEBUG) { UsbDebugScript(it, enable = true).run() }
+
+    /** Выключение «Отладки по USB». */
+    fun startUsbDebugOff(): StartResult = launch(Task.USB_DEBUG_OFF) { UsbDebugScript(it, enable = false).run() }
+
     private fun launch(
         t: Task,
         block: suspend (PairingAccessibilityService) -> Unit
@@ -57,6 +68,7 @@ object PairingAutomation {
         val service = PairingAccessibilityService.instance ?: return StartResult.SERVICE_DISABLED
         if (job?.isActive == true) return StartResult.ALREADY_RUNNING
 
+        _lines.value = emptyList()
         _task.value = t
         _running.value = true
         job = service.scope.launch {
@@ -151,6 +163,15 @@ class PairingAccessibilityService : AccessibilityService() {
         node.getBoundsInScreen(r)
         if (r.isEmpty) return false
         val path = Path().apply { moveTo(r.exactCenterX(), r.exactCenterY()) }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 60))
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    /** Тап по экранным координатам (для элементов, которые Android не показывает службе доступности). */
+    fun tapAt(x: Float, y: Float): Boolean {
+        val path = Path().apply { moveTo(x, y) }
         val gesture = GestureDescription.Builder()
             .addStroke(GestureDescription.StrokeDescription(path, 0, 60))
             .build()

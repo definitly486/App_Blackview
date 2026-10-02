@@ -32,6 +32,24 @@
         style="@style/Widget.MaterialComponents.Button" />
 
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnUsbDebug"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Включить отладку по USB"
+        android:backgroundTint="?attr/colorPrimary"
+        style="@style/Widget.MaterialComponents.Button" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnUsbDebugOff"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Выключить отладку по USB"
+        android:backgroundTint="?attr/colorPrimary"
+        style="@style/Widget.MaterialComponents.Button" />
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btnInstallShizuku"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

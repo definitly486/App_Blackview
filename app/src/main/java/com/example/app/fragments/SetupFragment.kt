@@ -19,6 +19,7 @@ import com.example.app.shell.AdbShell
 import com.example.app.shell.BlockPermissions
 import com.example.app.shell.DeviceSetup
 import com.example.app.shell.WifiConnector
+import com.example.app.shell.SelfApkSaver
 import com.example.app.shell.ShizukuInstaller
 import kotlinx.coroutines.launch
 
@@ -39,6 +40,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
     private lateinit var btnUnlockDev: Button
     private lateinit var btnUsbDebug: Button
     private lateinit var btnUsbDebugOff: Button
+    private lateinit var btnSaveSelf: Button
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -56,6 +58,9 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         btnUnlockDev = view.findViewById(R.id.btnUnlockDev)
         btnUsbDebug = view.findViewById(R.id.btnUsbDebug)
         btnUsbDebugOff = view.findViewById(R.id.btnUsbDebugOff)
+
+        btnSaveSelf = view.findViewById(R.id.btnSaveSelfApk)
+        btnSaveSelf.setOnClickListener { saveSelfApk() }
 
         btnPair.setOnClickListener { onPairClicked() }
         btnUnlockDev.setOnClickListener { onUnlockDevClicked() }
@@ -186,6 +191,26 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
                     }
                     .setNegativeButton("Отмена", null)
                     .show()
+        }
+    }
+
+    /** Копирует установленный APK этого приложения в Download/download-APK. */
+    private fun saveSelfApk() {
+        val appContext = requireContext().applicationContext
+        btnSaveSelf.isEnabled = false
+        viewLifecycleOwner.lifecycleScope.launch {
+            when (val r = SelfApkSaver.save(appContext)) {
+                is SelfApkSaver.Result.Success -> {
+                    val mb = "%.1f".format(r.sizeBytes / 1024.0 / 1024.0)
+                    append("✓ Копия приложения сохранена ($mb МБ):\n     ${r.location}")
+                    Toast.makeText(appContext, "Сохранено: ${r.location}", Toast.LENGTH_LONG).show()
+                }
+                is SelfApkSaver.Result.Error -> {
+                    append("✗ Не удалось сохранить копию: ${r.message}")
+                    Toast.makeText(appContext, "Ошибка: ${r.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            btnSaveSelf.isEnabled = true
         }
     }
 

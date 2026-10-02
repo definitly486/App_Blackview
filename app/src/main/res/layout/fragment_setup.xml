@@ -101,6 +101,14 @@
         android:text="Открыть Shizuku"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSaveSelfApk"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Сохранить копию этого приложения (APK)"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
     <ScrollView
         android:id="@+id/setupScroll"
         android:layout_width="match_parent"

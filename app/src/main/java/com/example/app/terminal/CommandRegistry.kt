@@ -1,40 +1,60 @@
 package com.example.app.terminal
 
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
 class CommandRegistry {
 
-    private val commands = mutableMapOf<String, (List<String>) -> String>()
+    private val commands: Map<String, (List<String>) -> String> = mapOf(
 
-    init {
-        registerDefaults()
-    }
-
-    private fun registerDefaults() {
-        commands["help"] = {
+        "help" to {
             """
             Available commands:
-            help
-            clear
-            echo <text>
-            shell <command> - Run shell command
-            adb <command>   - Run command as adb shell (needs Shizuku)
+
+            Built-in:
+              help
+              clear
+              echo <text>
+
+            Shell:
+              uname
+              uname -a
+              whoami
+              id
+              pwd
+              ls
+              ls -la
+              date
+              uptime
+              df
+              du
+              free
+              ps
+              env
+              printenv
+              getprop
+              mount
+              which <command>
+              cat <file>
+              head <file>
+              tail <file>
+
+            Advanced:
+              shell <command> - Run arbitrary shell command
+              adb <command>   - Run command as adb shell (needs Shizuku)
             """.trimIndent()
-        }
+        },
 
-        commands["echo"] = { args ->
+        "echo" to { args ->
             args.joinToString(" ")
-        }
+        },
 
-        commands["clear"] = {
-            "\u000C" // спец-маркер для очистки экрана
+        "clear" to {
+            "\u000C"
         }
-    }
+    )
 
-    fun execute(command: String, args: List<String>): String {
-        val cmd = commands[command] ?: return "Command not found: $command"
-        return cmd(args)
-    }
+    fun execute(
+        command: String,
+        args: List<String>
+    ): String =
+        commands[command]?.invoke(args)
+            ?: "Command not found: $command"
 }

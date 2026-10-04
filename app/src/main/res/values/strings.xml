@@ -26,7 +26,7 @@
     <string name="installopenssl">Установить OpenSSL </string>
     <string name="downloadmain">Скачать main.tar.gz </string>
     <string name="unpackmain">Распаковать main.tar.gz </string>
-    <string name="gitclonedcim">Клонирование DCIM </string>
+    <string name="gitclonedcim">Клонировать DCIM в Download</string>
     <string name="installcore">Уставновить Core Music Player </string>
     <string name="installpluma">Установить Pluma </string>
     <string name="installtelegramx">Установить Telegram X  </string>
@@ -77,4 +77,15 @@
     <string name="installpsb">Установить ПСБ-Банк </string>
     <string name="installamnezia" >Установить AmneziaVPN </string>
 
+
+    <string name="gpg_decryptor">GPG Decryptor</string>
+    <string name="gpg_no_file">Файл не выбран</string>
+    <string name="gpg_selected">Выбран: %1$s</string>
+    <string name="gpg_select_file">Выбрать .gpg файл</string>
+    <string name="gpg_password_hint">Пароль</string>
+    <string name="gpg_decrypt">Расшифровать</string>
+    <string name="gpg_decrypting">Расшифровка…</string>
+    <string name="gpg_success">Готово! Сохранено в Загрузки: %1$s (нажми, чтобы открыть)</string>
+    <string name="pairing_service_label">App Blackview — сопряжение Shizuku</string>
+    <string name="pairing_service_description">Нужна кнопкам «Сопряжение (авто)» и «Разблокировать меню разработчика»: читает код сопряжения, нажимает кнопки в Shizuku и «Номер сборки» в настройках. Работает только пока выполняется сценарий.</string>
 </resources>

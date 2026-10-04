@@ -2,9 +2,14 @@
 
 package com.example.app.fragments
 
-import DownloadHelper
+import com.example.app.crypto.GpgDecryptor
+import com.example.app.download.DownloadHelper
 import android.os.Bundle
 import android.os.Environment
+import android.os.Build
+import android.provider.Settings
+import android.content.Intent
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,17 +21,14 @@ import androidx.lifecycle.lifecycleScope
 import com.example.app.R
 import com.example.app.shell.AdbShell
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
+import org.eclipse.jgit.api.Git
 
 class ThirdFragment : Fragment() {
 
     private lateinit var downloadHelper: DownloadHelper
-    private lateinit var downloadHelper2: DownloadHelper2
 
     private lateinit var editTextPasswordgnucash: EditText
 
@@ -38,7 +40,6 @@ class ThirdFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_third, container, false)
         downloadHelper = DownloadHelper(requireContext())
-        downloadHelper2 = DownloadHelper2(requireContext())
         editTextPasswordgnucash = view.findViewById(R.id.editTextPasswordgnucash)
         setupInstallButton(view)
         setupDownloadNoteButton(view)
@@ -48,7 +49,13 @@ class ThirdFragment : Fragment() {
         rebootButton(view)
         powerofButton(view)
         deletedefinitlygnucahButton(view)
+        setupSelfUninstallButton(view)
         return view
+    }
+
+    override fun onDestroyView() {
+        downloadHelper.cleanup()
+        super.onDestroyView()
     }
 
     private fun setupInstallButton(view: View) {
@@ -57,6 +64,21 @@ class ThirdFragment : Fragment() {
             val apkUrl1 = "https://github.com/xinitronix/gnucash/raw/refs/heads/main/definitly.gnucash.gpg"
             downloadHelper.downloadToPublic(apkUrl1)
 
+        }
+    }
+
+    private fun setupSelfUninstallButton(view: View) {
+        view.findViewById<Button>(R.id.self_uninstall).setOnClickListener {
+            val packageUri = Uri.parse("package:${requireContext().packageName}")
+            val intent = Intent(Intent.ACTION_DELETE, packageUri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            runCatching {
+                startActivity(intent)
+            }.onFailure {
+                showToast("Не удалось открыть удаление приложения")
+            }
         }
     }
 
@@ -96,49 +118,40 @@ class ThirdFragment : Fragment() {
 
 
     private fun decryptGnucasgpgpButton(view: View) {
-        val installButton = view.findViewById<Button>(R.id.decryptgnucashgpg)
-
-        installButton.setOnClickListener { _ ->
-
-            //проверка существоания gnupg
-
-            //   isGnupgBinaryExists ()
-
-            // Получаем введённый пароль из EditText поля
-            val enteredPassword = editTextPasswordgnucash.text.toString().trim() // trim удалит лишние пробелы
-
-            // Проверяем наличие пароля
-            if (enteredPassword.isBlank()) {
+        view.findViewById<Button>(R.id.decryptgnucashgpg).setOnClickListener {
+            val password = editTextPasswordgnucash.text.toString()
+            if (password.isBlank()) {
                 showToast("Пароль не введен. Пожалуйста, введите пароль.")
                 return@setOnClickListener
             }
 
-            // Создаем экземпляр помощника для работы с PGP-шифрованием
-            val helper = GPGHelper()
+            val downloads = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            )
+            val input = File(downloads, "definitly.gnucash.gpg")
+            val output = File(downloads, "definitly.gnucash")
 
-            try {
-                // Расшифровка файла с использованием переданного пароля
-                //   val isDecryptedSuccessfully = helper.decryptFile(
-                //        "/storage/emulated/0/Download/definitly.gnucash.gpg",
-                //       "/storage/emulated/0/Download/definitly.gnucash",
-                //        enteredPassword
-                //   )
-
-                val isDecryptedSuccessfully = helper.decryptGpgSymmetric(
-                    "/storage/emulated/0/Download/definitly.gnucash.gpg",
-                    "/storage/emulated/0/Download/definitly.gnucash",
-                    enteredPassword
-                )
-
-
-                if (isDecryptedSuccessfully) {
-                    showToast("Файл успешно расшифрован.")
-                } else {
-                    showToast("Ошибка при расшифровке файла.")
+            lifecycleScope.launch {
+                val success = withContext(Dispatchers.IO) {
+                    val chars = password.toCharArray()
+                    try {
+                        GpgDecryptor().decrypt(input, output, chars)
+                        true
+                    } catch (_: Exception) {
+                        output.delete()
+                        false
+                    } finally {
+                        chars.fill('\u0000')
+                    }
                 }
-            } catch (exception: Exception) {
-                // Обрабатываем возможные исключения, возникающие при шифровании
-                showToast("Ошибка при обработке файла: ${exception.localizedMessage}")
+
+                showToast(
+                    if (success) {
+                        "Файл успешно расшифрован."
+                    } else {
+                        "Ошибка при расшифровке файла."
+                    }
+                )
             }
         }
     }
@@ -161,39 +174,75 @@ class ThirdFragment : Fragment() {
 
 
     private fun setupGitCloneButton(view: View) {
-        val gitCloneButton = view.findViewById<Button>(R.id.gitclonedcim)
-        gitCloneButton.setOnClickListener {
-            lifecycleScope.launch {
-                val gitCloneJob = async(Dispatchers.IO) { handleGitCloneOperation() }
-                val success = gitCloneJob.await() // Ждём завершения клонирования и получаем результат
+        val cloneButton = view.findViewById<Button>(R.id.gitclonedcim)
+        cloneButton.setOnClickListener {
+            cloneDcimToDownloads()
+        }
+    }
 
-                if (!success) {
-                    Toast.makeText(context, "Ошибка клонирования.", Toast.LENGTH_SHORT).show()
+    private fun cloneDcimToDownloads() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            showToast("Разрешите доступ ко всем файлам для записи в /storage/emulated/0/download/dcim")
+            runCatching {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:${requireContext().packageName}")
+                    )
+                )
+            }
+            return
+        }
+
+        showToast("Клонирование GitHub DCIM в /storage/emulated/0/download/dcim…")
+
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val downloadDir = File("/storage/emulated/0/download/dcim")
+                    if (!downloadDir.exists() && !downloadDir.mkdirs()) {
+                        error("Не удалось создать /storage/emulated/0/download")
+                    }
+
+                    // JGit выполняет настоящий git clone без Shizuku и без shell/git binary.
+                    // Клонируем во временную папку, затем переносим содержимое репозитория
+                    // прямо в /storage/emulated/0/download/, чтобы там не появился DCIM-main/.
+                    val cloneDir = File(requireContext().cacheDir, "dcim_git_${System.currentTimeMillis()}")
+                    cloneDir.deleteRecursively()
+                    try {
+                        Git.cloneRepository()
+                            .setURI("https://github.com/definitly486/DCIM.git")
+                            .setDirectory(cloneDir)
+                            .call()
+                            .use { }
+
+                        copyDirectoryContents(cloneDir, downloadDir)
+                    } finally {
+                        cloneDir.deleteRecursively()
+                    }
                 }
+            }
+
+            result.onSuccess {
+                showToast("Репозиторий DCIM успешно клонирован в /storage/emulated/0/download/dcim")
+            }.onFailure { e ->
+                showToast("Ошибка клонирования DCIM: ${e.message ?: e.javaClass.simpleName}")
             }
         }
     }
 
-
-
-
-
-
-
-
-
-
-    private suspend fun handleGitCloneOperation(): Boolean {
-        val gitClone = GitClone()
-        return withContext(Dispatchers.IO) {
-            val result = gitClone.cloneRepository()
-            if (result.isSuccess) {
-                showToast("Репозиторий успешно клонирован.")
-                return@withContext true
+    private fun copyDirectoryContents(source: File, destination: File) {
+        source.listFiles()?.forEach { sourceItem ->
+            val target = File(destination, sourceItem.name)
+            if (sourceItem.isDirectory) {
+                if (!target.exists() && !target.mkdirs()) {
+                    error("Не удалось создать ${target.absolutePath}")
+                }
+                copyDirectoryContents(sourceItem, target)
             } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Неизвестная ошибка"
-                showToast("Ошибка клонирования: $errorMessage")
-                return@withContext false
+                sourceItem.inputStream().use { input ->
+                    target.outputStream().use { output -> input.copyTo(output) }
+                }
             }
         }
     }

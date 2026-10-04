@@ -2,7 +2,7 @@
 
 package com.example.app.fragments
 
-import DownloadHelper
+import com.example.app.download.DownloadHelper
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.DialogInterface
@@ -266,45 +266,96 @@ class SecondFragment : Fragment() {
     suspend fun launchLoadSequence() {
         val urls = listOf(
             "https://github.com/definitly486/redmia5/releases/download/apk/Total_Commander_v.3.50d.apk",
-            "https://github.com/definitly486/redmia5/releases/download/apk/k9mail-13.0.apk",
-            "https://github.com/definitly486/redmia5/releases/download/apk/Google+Authenticator+7.0.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/AmneziaVPN_5.0.3.0_android11+_arm64-v8a.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/app-armeabi-v7a-fdroid-release.apk",
             "https://github.com/definitly486/Lenovo_Tab_3_7_TB3-730X/releases/download/apk/Pluma_.private_fast.browser_1.80_APKPure.apk",
-            "https://github.com/definitly486/Lenovo_Tab_3_7_TB3-730X/releases/download/apk/com.aurora.store_70.apk",
-            "https://github.com/definitly486/Lenovo_TB-X304L/releases/download/apk/ByeByeDPI-arm64-v8a-release.apk",
-            "https://github.com/definitly486/Lenovo_Tab_3_7_TB3-730X/releases/download/apk/Telegram+X+0.27.5.1747-arm64-v8a.apk",
-            "https://github.com/definitly486/redmia5/releases/download/apk/Core+Music+Player_1.0.apk"
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/app-release.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/Clock_2.32-release.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/dialer-fdroid-release.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/Just.Player.v0.12.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/messages-23-foss-release.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/net.sourceforge.opencamera_96.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/Yandex_Maps_17.2.0.apk",
+            "https://github.com/definitly486/BlackviewActive5/releases/download/apk/YTDLnis-1.9.0-armeabi-v7a-github-release.apk"
         )
 
         urls.forEachIndexed { index, url ->
             val result = downloadSingleAPK(url)
             handleResult(result, index + 1)
         }
-        Log.d("DownloadSequence", "Все файлы успешно обработаны!")
-        ApkAutoInstaller.installAutoAPK(context)
+        Log.d("DownloadSequence", "Все файлы обработаны, запускаю установку")
+        val summary = ApkAutoInstaller.installAutoAPK(context)
+        showInstallSummary(summary)
+    }
+
+    /** Итог установки + запрос недостающих разрешений. */
+    private fun showInstallSummary(summary: ApkAutoInstaller.Summary) {
+        val ctx = context?.applicationContext ?: return
+        when (summary.error) {
+            ApkAutoInstaller.ERROR_NEED_INSTALL_PERMISSION -> {
+                Toast.makeText(ctx, "Разрешите установку из этого приложения и нажмите кнопку ещё раз", Toast.LENGTH_LONG).show()
+                ctx.startActivity(
+                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+            ApkAutoInstaller.ERROR_NEED_ALL_FILES -> {
+                Toast.makeText(ctx, "Разрешите доступ ко всем файлам и нажмите кнопку ещё раз", Toast.LENGTH_LONG).show()
+                ctx.startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${ctx.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+            null -> {
+                val mode = if (summary.viaShizuku) "Shizuku" else "системный установщик"
+                val text = buildString {
+                    append("Установлено: ${summary.installed}, уже были: ${summary.skipped} ($mode)")
+                    if (summary.failed.isNotEmpty()) {
+                        append("\nНе удалось: ${summary.failed.joinToString()}")
+                    }
+                }
+                Toast.makeText(ctx, text, Toast.LENGTH_LONG).show()
+            }
+            else -> Toast.makeText(ctx, summary.error, Toast.LENGTH_LONG).show()
+        }
     }
 
     suspend fun downloadSingleAPK(url: String): File? {
         return suspendCancellableCoroutine { continuation ->
-            downloadHelper.downloadApkToApkFolder(url) { file ->
+            downloadHelper.downloadApkToPublicApkFolder(url) { file ->
                 continuation.resumeWith(Result.success(file))
             }
         }
     }
 
     fun handleResult(file: File?, index: Int) {
+        val ctx = context ?: return
         if (file != null) {
             Toast.makeText(
-                requireContext(),
+                ctx,
                 "Файл №$index загружен: ${file.name}",
                 Toast.LENGTH_SHORT
             ).show()
         } else {
-            Toast.makeText(requireContext(), "Ошибка загрузки файла №$index", Toast.LENGTH_SHORT)
+            Toast.makeText(ctx, "Ошибка загрузки файла №$index", Toast.LENGTH_SHORT)
                 .show()
         }
     }
 
     private fun downloadMain() {
+        val folder = getDownloadFolder()
+        if (folder == null) {
+            Toast.makeText(requireContext(), "Нет доступа к папке Download", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Если архив уже скачан — повторно не загружаем
+        val tarGzFile = File(folder, "main.tar.gz")
+        if (tarGzFile.exists()) {
+            Toast.makeText(requireContext(), "Файл main.tar.gz уже существует", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         downloadHelper.downloadToPublic("https://github.com/definitly486/BlackviewActive5/archive/main.tar.gz")
     }
 

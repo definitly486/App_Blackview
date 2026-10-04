@@ -1,93 +1,173 @@
+package com.example.app.terminal
+
 import android.content.Context
 import android.os.Environment
 import com.example.app.shell.AdbShell
-import com.example.app.terminal.CommandRegistry
-import kotlinx.coroutines.runBlocking
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.concurrent.thread
 
-class TerminalController(private val context: Context) {
+/**
+ * Coordinates terminal commands without blocking the UI thread.
+ *
+ * The controller owns its coroutine scope and can be closed when the screen is
+ * destroyed, preventing callbacks from outliving the Fragment view.
+ */
+class TerminalController(context: Context) {
 
-    var onOutput: ((String) -> Unit)? = null
+    private val appContext = context.applicationContext
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val registry = CommandRegistry()
 
-    fun printWelcome() {
-        onOutput?.invoke("Android Shell Terminal v1.0")
-        onOutput?.invoke("Type 'help' for available commands")
+    var onOutput: ((String) -> Unit)? = null
 
-        // Переход в директорию приложения (Downloads)
-        val appDirectory = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-        appDirectory?.let {
-            onOutput?.invoke("Changing to directory: ${it.absolutePath}")
+    /**
+     * Simple shell commands that can be entered directly,
+     * without the "shell" prefix.
+     */
+    private val directShellCommands = setOf(
+        "uname",
+        "whoami",
+        "id",
+        "pwd",
+        "ls",
+        "date",
+        "uptime",
+        "df",
+        "du",
+        "free",
+        "ps",
+        "env",
+        "printenv",
+        "getprop",
+        "mount",
+        "id",
+        "which",
+        "cat",
+        "head",
+        "tail"
+    )
+
+    fun printWelcome() {
+        emit("Android Shell Terminal v1.0")
+        emit("Type 'help' for available commands")
+
+        appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.let {
+            emit("Working directory: ${it.absolutePath}")
         }
     }
 
     fun execute(input: String) {
-        if (input.isBlank()) return
+        val commandLine = input.trim()
+        if (commandLine.isEmpty()) return
 
-        onOutput?.invoke("> $input")
+        emit("> $commandLine")
 
-        // shell — обычный shell приложения, adb — команды с правами shell (через Shizuku, без root)
-        if (input.startsWith("shell ")) {
-            val command = input.removePrefix("shell ").trim()
-            executeShellCommand(command)
-        } else if (input.startsWith("adb ")) {
-            val command = input.removePrefix("adb ").trim()
-            executeAdbCommand(command)
-        } else {
-            // Обработка зарегистрированных команд
-            val parts = input.split(" ")
-            val command = parts.first()
-            val args = parts.drop(1)
+        when {
+            commandLine.startsWith("shell ") ->
+                executeShellCommand(
+                    commandLine.removePrefix("shell ").trim()
+                )
 
-            val result = registry.execute(command, args)
-            onOutput?.invoke(result)
-        }
-    }
+            commandLine.startsWith("adb ") ->
+                executeAdbCommand(
+                    commandLine.removePrefix("adb ").trim()
+                )
 
+            else -> {
+                val parts = commandLine.split(Regex("\\s+"))
+                val command = parts.first()
+                val args = parts.drop(1)
 
-    // Выполнение обычной shell команды
-    private fun executeShellCommand(command: String) {
-        thread {
-            try {
-                // Получаем путь к директории приложения
-                val appDirectory = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-                appDirectory?.let {
-                    // Запускаем команду в этой директории
-                    val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", "cd ${it.absolutePath} && $command"))
-
-                    val output = BufferedReader(InputStreamReader(process.inputStream)).readText()
-                    val errorOutput = BufferedReader(InputStreamReader(process.errorStream)).readText()
-
-                    if (output.isNotBlank()) {
-                        onOutput?.invoke(output)
-                    }
-                    if (errorOutput.isNotBlank()) {
-                        onOutput?.invoke(errorOutput)
-                    }
+                if (command in directShellCommands) {
+                    executeShellCommand(commandLine)
+                } else {
+                    emit(registry.execute(command, args))
                 }
-            } catch (e: Exception) {
-                onOutput?.invoke("Error executing command: ${e.message}")
             }
         }
     }
 
-    // Выполнение команды с правами shell (как `adb shell`) через Shizuku
-    private fun executeAdbCommand(command: String) {
-        thread {
-            if (!AdbShell.isRunning()) {
-                onOutput?.invoke("Shizuku не запущен.")
-                return@thread
+    private fun executeShellCommand(command: String) {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val directory = appContext
+                        .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                        ?: return@withContext "Error: download directory unavailable"
+
+                    ProcessBuilder("sh", "-c", command)
+                        .directory(File(directory.absolutePath))
+                        .redirectErrorStream(true)
+                        .start()
+                        .let { process ->
+                            val output = process.inputStream
+                                .bufferedReader()
+                                .use { it.readText() }
+
+                            val exitCode = process.waitFor()
+
+                            buildString {
+                                if (output.isNotBlank()) {
+                                    append(output.trimEnd())
+                                }
+
+                                if (exitCode != 0) {
+                                    if (isNotEmpty()) {
+                                        append('\n')
+                                    }
+
+                                    append("(код возврата: $exitCode)")
+                                }
+                            }
+                        }
+                }.getOrElse {
+                    "Error executing command: " +
+                        (it.message ?: it.javaClass.simpleName)
+                }
             }
-            if (!AdbShell.hasPermission()) {
-                onOutput?.invoke("Нет разрешения Shizuku. Выдайте его на вкладке «Настройка».")
-                return@thread
-            }
-            val result = runBlocking { AdbShell.exec(context, command) }
-            if (result.output.isNotBlank()) onOutput?.invoke(result.output)
-            if (!result.ok) onOutput?.invoke("(код возврата: ${result.exitCode})")
+
+            emit(result)
         }
+    }
+
+    private fun executeAdbCommand(command: String) {
+        scope.launch {
+            if (!AdbShell.isRunning()) {
+                emit("Shizuku не запущен.")
+                return@launch
+            }
+
+            if (!AdbShell.hasPermission()) {
+                emit(
+                    "Нет разрешения Shizuku. " +
+                        "Выдайте его на вкладке «Настройка»."
+                )
+                return@launch
+            }
+
+            val result = AdbShell.exec(appContext, command)
+
+            if (result.output.isNotBlank()) {
+                emit(result.output)
+            }
+
+            if (!result.ok) {
+                emit("(код возврата: ${result.exitCode})")
+            }
+        }
+    }
+
+    private fun emit(text: String) {
+        onOutput?.invoke(text)
+    }
+
+    fun close() {
+        onOutput = null
+        scope.cancel()
     }
 }

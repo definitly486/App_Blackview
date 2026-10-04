@@ -21,7 +21,9 @@ import java.io.InputStreamReader
 @Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
 class DownloadHelper2(private val context: Context) {
     val folder = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-    fun decompressTarGz(tarGzFile: File, outputDir: File) {
+    /** Распаковывает архив и возвращает количество распакованных файлов. */
+    fun decompressTarGz(tarGzFile: File, outputDir: File): Int {
+        var filesCount = 0
 
         // Ensure canonical path for security
         outputDir.canonicalFile
@@ -45,10 +47,12 @@ class DownloadHelper2(private val context: Context) {
                         outputFile.outputStream().use { outStream ->
                             tarIn.copyTo(outStream)
                         }
+                        filesCount++
                     }
                 }
             }
         }
+        return filesCount
     }
 
 

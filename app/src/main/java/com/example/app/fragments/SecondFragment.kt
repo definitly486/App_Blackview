@@ -474,20 +474,45 @@ class SecondFragment : Fragment() {
 
 
     private fun unpackMain() {
-        val folder = getDownloadFolder() ?: return
+        val ctx = requireContext().applicationContext
+        val folder = getDownloadFolder()
+        if (folder == null) {
+            Toast.makeText(ctx, "Нет доступа к папке Download", Toast.LENGTH_SHORT).show()
+            return
+        }
         val tarGzFile = File(folder, "main.tar.gz")
         val outputDir = File(folder, "")
         if (!tarGzFile.exists()) {
-            Toast.makeText(requireContext(), "Файл main.tar.gz не существует", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, "Файл main.tar.gz не существует", Toast.LENGTH_SHORT).show()
             return
         }
-        downloadHelper2 = DownloadHelper2(requireContext())
-        downloadHelper2.decompressTarGz(tarGzFile, outputDir)
+        downloadHelper2 = DownloadHelper2(ctx)
+
+        Toast.makeText(ctx, "Начинается распаковка main.tar.gz...", Toast.LENGTH_SHORT).show()
+
+        // Распаковка в фоне, чтобы не блокировать UI
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val count = downloadHelper2.decompressTarGz(tarGzFile, outputDir)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        ctx,
+                        "Распаковка main.tar.gz завершена (файлов: $count)",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Log.e("UnpackMain", "Ошибка распаковки main.tar.gz", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        ctx,
+                        "Ошибка распаковки main.tar.gz: ${e.message ?: e.javaClass.simpleName}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
     }
-
-
-
-
 
     private fun handleDownloadResult(file: File?, name: String) {
         if (file != null) {

@@ -31,6 +31,7 @@ class ThirdFragment : Fragment() {
     private lateinit var downloadHelper: DownloadHelper
 
     private lateinit var editTextPasswordgnucash: EditText
+    private lateinit var editTextPasswordMyPhoneConf: EditText
 
 
     override fun onCreateView(
@@ -41,7 +42,10 @@ class ThirdFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_third, container, false)
         downloadHelper = DownloadHelper(requireContext())
         editTextPasswordgnucash = view.findViewById(R.id.editTextPasswordgnucash)
+        editTextPasswordMyPhoneConf = view.findViewById(R.id.editTextPasswordmyphoneconf)
         setupInstallButton(view)
+        setupDownloadMyPhoneConfButton(view)
+        decryptMyPhoneConfButton(view)
         setupDownloadNoteButton(view)
         setupDownloadToxButton(view)
         setupGitCloneButton(view)
@@ -150,6 +154,58 @@ class ThirdFragment : Fragment() {
                         "Файл успешно расшифрован."
                     } else {
                         "Ошибка при расшифровке файла."
+                    }
+                )
+            }
+        }
+    }
+
+    private fun setupDownloadMyPhoneConfButton(view: View) {
+        view.findViewById<Button>(R.id.downloadmyphoneconf).setOnClickListener {
+            // raw-ссылка: ссылка /blob/ отдаёт HTML-страницу, а не сам файл
+            val url = "https://github.com/definitly486/BlackviewActive5/raw/refs/heads/main/my_phone.conf.gpg"
+            downloadHelper.downloadToPublic(url)
+        }
+    }
+
+    private fun decryptMyPhoneConfButton(view: View) {
+        view.findViewById<Button>(R.id.decryptmyphoneconf).setOnClickListener {
+            val password = editTextPasswordMyPhoneConf.text.toString()
+            if (password.isBlank()) {
+                showToast("Пароль не введен. Пожалуйста, введите пароль.")
+                return@setOnClickListener
+            }
+
+            val downloads = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            )
+            val input = File(downloads, "my_phone.conf.gpg")
+            val output = File(downloads, "my_phone.conf")
+
+            if (!input.exists()) {
+                showToast("Файл my_phone.conf.gpg не найден. Сначала скачайте его.")
+                return@setOnClickListener
+            }
+
+            lifecycleScope.launch {
+                val success = withContext(Dispatchers.IO) {
+                    val chars = password.toCharArray()
+                    try {
+                        GpgDecryptor().decrypt(input, output, chars)
+                        true
+                    } catch (_: Exception) {
+                        output.delete()
+                        false
+                    } finally {
+                        chars.fill('\u0000')
+                    }
+                }
+
+                showToast(
+                    if (success) {
+                        "Файл my_phone.conf успешно расшифрован."
+                    } else {
+                        "Ошибка при расшифровке файла (неверный пароль?)."
                     }
                 )
             }

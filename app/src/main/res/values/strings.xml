@@ -14,6 +14,8 @@
     <string name="installgnucashgpg" tools:ignore="Typos"> Скачать definitly.gnucash.gpg </string>
     <string name="installgnucash">Установить Gnucash </string>
     <string name="installkeychain">Установить Keychain </string>
+    <string name="downloadmyphoneconf" tools:ignore="Typos">Скачать my_phone.conf.gpg</string>
+    <string name="decryptmyphoneconf" tools:ignore="Typos">Расшифровать my_phone.conf.gpg</string>
     <string name="downloadnote">Скачать Note </string>
     <string name="installdpi">Установить BYEBYEDPI </string>
     <string name="installsports">Установить Sports </string>

@@ -70,6 +70,31 @@ android {
         jvmTarget = "11"
     }
 
+    // В APK остаются только ресурсы библиотек (Material, AppCompat) на этих языках
+    androidResources {
+        localeFilters += listOf("ru", "en")
+    }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/*.version",
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+                "META-INF/DEPENDENCIES",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "META-INF/versions/**",
+                "META-INF/**/module-info.class",
+                "**/*.kotlin_module",
+                "DebugProbesKt.bin",
+                "kotlin-tooling-metadata.json",
+                // английский JGitText.properties остаётся, переводы не нужны
+                "org/eclipse/jgit/internal/JGitText_*.properties"
+            )
+        }
+    }
+
     buildFeatures {
         viewBinding = true
         buildConfig = true
@@ -118,7 +143,6 @@ private fun quoteBuildConfig(value: String): String = "\"" + value + "\""
 dependencies {
     implementation(libs.bouncycastle.provider)
     implementation(libs.bouncycastle.pgp)
-    implementation(libs.bouncycastle.pkix)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.material)

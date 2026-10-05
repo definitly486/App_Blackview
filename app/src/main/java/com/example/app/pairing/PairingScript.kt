@@ -130,6 +130,22 @@ class PairingScript(private val svc: PairingAccessibilityService) {
         }
     }
 
+    private fun developerOptionsEnabled(ctx: Context): Boolean = runCatching {
+        android.provider.Settings.Global.getInt(
+            ctx.contentResolver, android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0
+        ) == 1
+    }.getOrDefault(false)
+
+    /** Если меню разработчика скрыто — включает его (7 нажатий на «Номер сборки») тем же сценарием, что и отдельная кнопка. */
+    private suspend fun ensureDeveloperOptions(ctx: Context): Boolean {
+        if (developerOptionsEnabled(ctx)) return true
+        say("   Меню разработчика не включено — разблокирую")
+        DeveloperUnlockScript(svc).run()
+        if (developerOptionsEnabled(ctx)) return true
+        say("   ✗ меню разработчика не включилось — включите вручную и повторите")
+        return false
+    }
+
     private fun isInstallerWindow(n: AccessibilityNodeInfo): Boolean = n.pkg().contains("installer", ignoreCase = true)
 
     /**
@@ -293,6 +309,8 @@ class PairingScript(private val svc: PairingAccessibilityService) {
             backToApp()
             return
         }
+        // Беспроводная отладка живёт в меню разработчика
+        if (!ensureDeveloperOptions(ctx)) return
         // Беспроводной отладке нужен Wi-Fi
         if (!ensureWifi(ctx)) return
 

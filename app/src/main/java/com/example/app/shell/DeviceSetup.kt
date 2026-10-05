@@ -16,7 +16,7 @@ object DeviceSetup {
      * В Android 9+ ползунок нелинейный, поэтому 20% на ползунке ≈ 5 из 255.
      * Хотите ярче — увеличьте число (например, 20 ≈ 40% на ползунке, 50 ≈ 60%).
      */
-    private const val BRIGHTNESS = 50
+    private const val BRIGHTNESS = 55
 
     private const val IME = "org.dslul.openboard.inputmethod.latin/.LatinIME"
 

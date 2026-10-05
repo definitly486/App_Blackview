@@ -39,6 +39,9 @@ class PairingScript(private val svc: PairingAccessibilityService) {
         val DEV_OPTIONS = arrayOf("Developer options", "Параметры разработчика", "Для разработчиков")
         const val DEV_OPTIONS_ID = "developer_options"
         val WIRELESS = arrayOf("Wireless debugging", "Wi-Fi debugging", "Беспроводная отладка", "Отладка по Wi-Fi", "Отладка по Wi-Fi")
+        val WIRELESS_TITLE = arrayOf(
+            "Wireless debugging", "Wi-Fi debugging", "Беспроводн", "Отладка по Wi-Fi", "отладку по Wi-Fi", "отладке по Wi-Fi"
+        )
         val USB_DEBUG = arrayOf("USB debugging", "Отладка по USB")
         val PAIR_ROW = arrayOf(
             "pairing code", "код подключения", "кода подключения", "коду подключения",
@@ -440,11 +443,14 @@ class PairingScript(private val svc: PairingAccessibilityService) {
 
     /** Кнопка запуска именно в карточке «Запуск через беспроводную отладку» (а не в карточке root). */
     private fun wirelessStartButton(): AccessibilityNodeInfo? {
-        val titleTop = svc.collect { it.pkg() == SHIZUKU && it.has(*WIRELESS, "беспроводн") }
-            .minOfOrNull { it.top() } ?: return null
-        return svc.collect { it.pkg() == SHIZUKU && it.eq(*START_BTN) }
-            .filter { it.top() > titleTop }
-            .minByOrNull { it.top() }
+        val starts = svc.collect { it.pkg() == SHIZUKU && it.eq(*START_BTN) }
+        if (starts.isEmpty()) return null
+        // Заголовок карточки: «Запуск через отладку по Wi-Fi» (в винительном падеже!), «Start via Wireless debugging»
+        val titleTop = svc.collect { it.pkg() == SHIZUKU && it.has(*WIRELESS_TITLE) }
+            .minOfOrNull { it.top() }
+        // Заголовок не нашли — берём верхнюю кнопку: карточка беспроводной отладки выше карточки root
+        return if (titleTop == null) starts.minByOrNull { it.top() }
+        else starts.filter { it.top() > titleTop }.minByOrNull { it.top() }
     }
 
     /**

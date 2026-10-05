@@ -5,11 +5,14 @@ import android.content.Intent
 import android.graphics.Rect
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import com.example.app.MainActivity
 import com.example.app.shell.AdbShell
+import com.example.app.shell.DeviceSetup
+import com.example.app.shell.WifiConnector
 import com.example.app.shell.ShizukuInstaller
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -50,6 +53,12 @@ class PairingScript(private val svc: PairingAccessibilityService) {
         val PAIR_FAIL = arrayOf("Pairing failed", "Не удалось", "Сопряжение не")
         val START_BTN = arrayOf("Start", "Запустить", "Запуск")
         val ALLOW_ALWAYS = arrayOf("Allow all the time", "Разрешить всегда")
+        val INSTALL_BTN = arrayOf(
+            "Install", "Update", "Установить", "Обновить",
+            "Install anyway", "Установить всё равно", "Установить все равно", "Всё равно установить", "Все равно установить"
+        )
+        val DONE_BTN = arrayOf("Done", "Готово")
+        const val WIFI_WAIT_MS = 45_000L
         val CODE_FALLBACK = Regex("^\\s*\\d{3}\\s?\\d{3}\\s*$")
     }
 
@@ -112,10 +121,130 @@ class PairingScript(private val svc: PairingAccessibilityService) {
 
     // ---------- проверки ----------
 
+    @Suppress("DEPRECATION")
     private fun hasWifi(ctx: Context): Boolean {
         val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
-        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        // allNetworks: роутер без интернета (Huawei B315) не становится «активной» сетью, пока есть мобильные данные
+        return cm.allNetworks.any {
+            cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        }
+    }
+
+    private fun isInstallerWindow(n: AccessibilityNodeInfo): Boolean = n.pkg().contains("installer", ignoreCase = true)
+
+    /**
+     * Если Shizuku нет — ставит его из вшитого APK: сам включает «Установку из этого источника»,
+     * жмёт «Установить» в системном установщике и ждёт появления пакета.
+     */
+    private suspend fun ensureShizukuInstalled(ctx: Context): Boolean {
+        if (ShizukuInstaller.isInstalled(ctx)) return true
+        say("0/6 Shizuku не установлен — устанавливаю из APK приложения")
+
+        var r = ShizukuInstaller.install(ctx)
+        if (r is ShizukuInstaller.Result.NeedInstallPermission) {
+            say("   включаю разрешение «Установка неизвестных приложений»")
+            val sw = waitFor("переключатель установки из этого источника", 10_000, silent = true) {
+                svc.first { it.inSettings() && it.isCheckable && it.isEnabled }
+            }
+            if (sw != null && !sw.isChecked) svc.click(sw)
+            delay(1_000)
+            if (!ctx.packageManager.canRequestPackageInstalls()) {
+                say("   ✗ не удалось включить разрешение — включите его вручную и повторите")
+                say("   на экране: ${svc.dumpScreen()}")
+                return false
+            }
+            svc.back()
+            delay(800)
+            r = ShizukuInstaller.install(ctx)
+        }
+        if (r is ShizukuInstaller.Result.Error) {
+            say("   ✗ не удалось запустить установку: ${r.message}")
+            return false
+        }
+        if (r !is ShizukuInstaller.Result.Started) {
+            say("   ✗ установка не началась")
+            return false
+        }
+
+        var lastClick = 0L
+        val ok = waitFor("установка Shizuku (кнопка «Установить»)", 90_000) {
+            if (ShizukuInstaller.isInstalled(ctx)) true else {
+                if (now() - lastClick > 2_000) {
+                    val btn = svc.first { isInstallerWindow(it) && it.eq(*INSTALL_BTN) }
+                    if (btn != null && svc.click(btn)) lastClick = now()
+                }
+                null
+            }
+        } ?: return false
+
+        delay(1_000)
+        svc.first { isInstallerWindow(it) && it.eq(*DONE_BTN) }?.let { svc.click(it) }
+        say("   ✓ Shizuku установлен")
+        return ok
+    }
+
+    /**
+     * Если Wi-Fi не подключён — включает его (при необходимости) и подключается к сети из [DeviceSetup]
+     * через WifiNetworkSuggestion; подтверждает системный запрос на разрешение предлагать сети.
+     */
+    @Suppress("DEPRECATION")
+    private suspend fun ensureWifi(ctx: Context): Boolean {
+        if (hasWifi(ctx)) return true
+        say("   Wi-Fi не подключён — подключаюсь к ${DeviceSetup.WIFI_SSID}")
+
+        val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        if (!wm.isWifiEnabled) {
+            say("   Wi-Fi выключен — включаю")
+            runCatching { wm.setWifiEnabled(true) } // на Android 10+ игнорируется, тогда — через панель
+            delay(1_000)
+            if (!wm.isWifiEnabled) {
+                runCatching {
+                    svc.startActivity(
+                        Intent(android.provider.Settings.Panel.ACTION_WIFI)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+                waitFor("переключатель Wi-Fi", 8_000, silent = true) {
+                    if (wm.isWifiEnabled) true else {
+                        svc.first { it.isCheckable && !it.isChecked && it.isEnabled && !it.pkg().startsWith(ctx.packageName) }
+                            ?.let { svc.click(it) }
+                        null
+                    }
+                }
+                svc.back() // закрыть панель
+                delay(500)
+            }
+            if (!wm.isWifiEnabled) {
+                say("   ✗ не удалось включить Wi-Fi — включите вручную и повторите")
+                return false
+            }
+        }
+
+        val res = WifiConnector.connect(ctx, DeviceSetup.WIFI_SSID, DeviceSetup.WIFI_PASSWORD)
+        say((if (res.ok) "   " else "   ✗ ") + res.message)
+        if (!res.ok) return false
+
+        val start = now()
+        val end = start + WIFI_WAIT_MS
+        var asked = false
+        while (now() < end) {
+            if (hasWifi(ctx)) { say("   ✓ Wi-Fi подключён"); delay(1_500); return true }
+            // при первом добавлении Android спрашивает в уведомлении «Разрешить предлагать сети?»
+            if (!asked && now() > start + 4_000) {
+                asked = true
+                svc.openShade()
+                delay(900)
+                val allow = waitFor("кнопка «Разрешить» в запросе о сетях", 5_000, silent = true) {
+                    svc.first { it.pkg() != ctx.packageName && it.pkg() != SHIZUKU && it.eq(*ALLOW_NETWORK) }
+                }
+                if (allow != null) { svc.click(allow); say("   разрешил приложению предлагать сети") }
+                delay(500)
+                svc.back()
+            }
+            delay(1_000)
+        }
+        say("   ✗ не удалось подключиться к ${DeviceSetup.WIFI_SSID} (сеть в зоне действия? пароль верный?)")
+        return false
     }
 
     private fun launchShizuku(): Boolean {
@@ -157,20 +286,15 @@ class PairingScript(private val svc: PairingAccessibilityService) {
         val ctx = svc.applicationContext
 
         say("▶ Сопряжение: старт")
-        if (!ShizukuInstaller.isInstalled(ctx)) {
-            say("✗ Shizuku не установлен — нажмите «Установить Shizuku»")
-            return
-        }
+        if (!ensureShizukuInstalled(ctx)) return
         if (AdbShell.isRunning()) {
             say("✓ Shizuku уже запущен")
             grantPermission()
             backToApp()
             return
         }
-        if (!hasWifi(ctx)) {
-            say("✗ Нет подключения к Wi-Fi (нужен для беспроводной отладки) — нажмите «Подключиться к Wi-Fi»")
-            return
-        }
+        // Беспроводной отладке нужен Wi-Fi
+        if (!ensureWifi(ctx)) return
 
         // 1. Shizuku → Сопряжение
         say("1/6 Открываю Shizuku и жму «Сопряжение»")

@@ -15,6 +15,12 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
+    <!-- Аппаратный FM Broadcast Radio API -->
+    <uses-permission android:name="android.permission.ACCESS_BROADCAST_RADIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- Доступ к API Shizuku (запуск команд с правами shell без root) -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
@@ -67,6 +73,12 @@
                 <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
+
+        <!-- Аппаратный FM-тюнер Blackview/Unisoc. Работает в фоне. -->
+        <service
+            android:name=".fmradio.FmRadioService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <activity
             android:name=".MainActivity"

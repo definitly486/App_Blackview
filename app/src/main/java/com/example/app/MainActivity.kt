@@ -12,6 +12,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.setPadding
 import com.example.app.fragments.FirstFragment
+import com.example.app.fragments.FmRadioFragment
 import com.example.app.fragments.AmneziaVpnFragment
 import com.example.app.fragments.GpgDecryptFragment
 import com.example.app.fragments.NinthFragment
@@ -38,12 +39,13 @@ class MainActivity : AppCompatActivity() {
         ::TenthFragment,
         ::TerminalFragment,
         ::VideoPlayerFragment,
-        ::SetupFragment
+        ::SetupFragment,
+        ::FmRadioFragment
     )
 
     private val buttonTitles = listOf(
         "Первая", "Amnezia VPN", "Вторая", "Третья", "Git Clone", "Седьмая",
-        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Видео", "Настройка"
+        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Видео", "Настройка", "FM Radio"
     )
 
     private var selectedButton: Button? = null

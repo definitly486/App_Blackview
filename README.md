@@ -282,3 +282,18 @@ gpg --symmetric --armor secret.txt                  # → secret.txt.asc
 | Архивы | Apache Commons Compress 1.28, XZ for Java |
 | UI | Material Components, ConstraintLayout, ViewPager2, Fragment KTX |
 | Асинхронность | Kotlin Coroutines, Lifecycle KTX |
+
+## FM Radio
+
+Добавлена вкладка **FM Radio** для аппаратного FM-тюнера Blackview/Unisoc.
+
+- диапазон 87.5–108.0 MHz;
+- ручная настройка по 0.1 MHz;
+- SEEK − / SEEK +;
+- автосканирование;
+- foreground service для фоновой работы;
+- управление из уведомления;
+- WakeLock и AudioFocus;
+- Blackview/Unisoc параметры `AudioFmPreStop` и `FM_Volume`.
+
+На прошивках, где `android.permission.ACCESS_BROADCAST_RADIO` имеет `signature|privileged` уровень, приложение необходимо установить как системное/priv-app. Если FM не запускается, сначала проверь `adb logcat` на `SecurityException` от `RadioManager`.

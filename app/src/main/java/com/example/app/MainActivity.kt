@@ -22,6 +22,7 @@ import com.example.app.fragments.SixthFragment
 import com.example.app.fragments.TenthFragment
 import com.example.app.fragments.TerminalFragment
 import com.example.app.fragments.ThirdFragment
+import com.example.app.fragments.VideoPlayerFragment
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,19 +37,19 @@ class MainActivity : AppCompatActivity() {
         ::GpgDecryptFragment,
         ::TenthFragment,
         ::TerminalFragment,
+        ::VideoPlayerFragment,
         ::SetupFragment
     )
 
     private val buttonTitles = listOf(
         "Первая", "Amnezia VPN", "Вторая", "Третья", "Git Clone", "Седьмая",
-        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Настройка"
+        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Видео", "Настройка"
     )
 
     private var selectedButton: Button? = null
     private lateinit var buttonsContainer: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Android 15 (targetSdk 35): edge-to-edge включён принудительно — обрабатываем insets сами
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)

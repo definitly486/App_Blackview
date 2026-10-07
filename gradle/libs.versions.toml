@@ -1,5 +1,6 @@
 [versions]
 agp = "8.12.3"
+media3 = "1.5.1"
 bcpgJdk15to18 = "1.82"
 bcprovJdk15on = "1.70"
 bcprovJdk15onVersion = "1.82"
@@ -30,7 +31,9 @@ shizuku = "13.1.5"
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragmentKtx" }
 androidx-viewpager2 = { module = "androidx.viewpager2:viewpager2", version.ref = "viewpager2" }
-
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
+media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
 bcpg-jdk15on = { module = "org.bouncycastle:bcpg-jdk15on", version.ref = "bcpgJdk15to18" }
 bcpg-jdk15to18 = { module = "org.bouncycastle:bcpg-jdk15to18", version.ref = "bcpgJdk15to18" }
 bcprov-jdk15on = { module = "org.bouncycastle:bcprov-jdk15on", version.ref = "bcprovJdk15on" }

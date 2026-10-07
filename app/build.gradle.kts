@@ -143,7 +143,9 @@ private fun quoteBuildConfig(value: String): String = "\"" + value + "\""
 dependencies {
     implementation(libs.bouncycastle.provider)
     implementation(libs.bouncycastle.pgp)
-
+implementation(libs.media3.exoplayer)
+implementation(libs.media3.ui)
+implementation(libs.media3.common)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.material)
     implementation(libs.org.eclipse.jgit)

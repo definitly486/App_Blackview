@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.amnezia.awg.backend.GoBackend
 import org.amnezia.awg.backend.Tunnel
+import org.amnezia.awg.backend.TunnelActionHandler
 import org.amnezia.awg.config.Config
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
@@ -54,6 +55,14 @@ class AmneziaVpnFragment : Fragment() {
             loadConfig(uri)
         }
 
+    /** No-op handler: Android configs rarely use PreUp/PostUp scripts. */
+    private val noopActionHandler = object : TunnelActionHandler {
+        override fun runPreUp(scripts: MutableCollection<String>?) {}
+        override fun runPostUp(scripts: MutableCollection<String>?) {}
+        override fun runPreDown(scripts: MutableCollection<String>?) {}
+        override fun runPostDown(scripts: MutableCollection<String>?) {}
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -84,12 +93,8 @@ class AmneziaVpnFragment : Fragment() {
             disconnect()
         }
 
-        backend = GoBackend(requireContext())
-        backend?.setStatusCallback { connected ->
-            activity?.runOnUiThread {
-                showStatus(if (connected) "● VPN подключён" else "● VPN отключён", connected)
-            }
-        }
+        // com.zaneschepke / wgtunnel fork: GoBackend(Context, TunnelActionHandler)
+        backend = GoBackend(requireContext(), noopActionHandler)
         showStatus("● VPN отключён", false)
     }
 
@@ -123,6 +128,7 @@ class AmneziaVpnFragment : Fragment() {
                         "Протокол: AmneziaWG"
 
                 Toast.makeText(requireContext(), "Конфигурация загружена", Toast.LENGTH_SHORT).show()
+                showStatus("● VPN отключён", false)
             } catch (e: Exception) {
                 config = null
                 showStatus("Ошибка конфигурации", false)
@@ -155,8 +161,18 @@ class AmneziaVpnFragment : Fragment() {
                     override fun getName(): String = "amezia-vpn"
 
                     override fun onStateChange(newState: Tunnel.State) {
-                        // GoBackend сообщает фактическое состояние через StatusCallback.
+                        activity?.runOnUiThread {
+                            when (newState) {
+                                Tunnel.State.UP -> showStatus("● VPN подключён", true)
+                                Tunnel.State.DOWN -> showStatus("● VPN отключён", false)
+                            }
+                        }
                     }
+
+                    // Required by wgtunnel / com.zaneschepke Tunnel API
+                    override fun isIpv4ResolutionPreferred(): Boolean = true
+
+                    override fun isMetered(): Boolean = false
                 }
 
                 awg.setState(newTunnel, Tunnel.State.UP, cfg)

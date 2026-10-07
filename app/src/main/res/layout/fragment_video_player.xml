@@ -6,50 +6,57 @@
     android:orientation="vertical"
     android:padding="12dp">
 
-    <TextView
+    <LinearLayout
+        android:id="@+id/headerLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:gravity="center"
-        android:text="Видеоплеер"
-        android:textColor="@android:color/white"
-        android:textSize="20sp"
-        android:textStyle="bold" />
+        android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/tvSelectedVideo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:text="Файл не выбран"
-        android:textColor="@android:color/white"
-        android:textSize="13sp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:gravity="center"
+            android:text="Видеоплеер"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnSelectVideo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:text="Выбрать видео" />
+        <TextView
+            android:id="@+id/tvSelectedVideo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Файл не выбран"
+            android:textColor="@android:color/white"
+            android:textSize="13sp" />
 
-    <EditText
-        android:id="@+id/etVideoUrl"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:hint="Или вставь URL (http/https)"
-        android:inputType="textUri"
-        android:minHeight="48dp"
-        android:singleLine="true"
-        android:textColor="@android:color/white"
-        android:textColorHint="#D7CCC8" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSelectVideo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Выбрать видео" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnPlayUrl"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:text="Играть по URL" />
+        <EditText
+            android:id="@+id/etVideoUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:hint="Или вставь URL (http/https)"
+            android:inputType="textUri"
+            android:minHeight="48dp"
+            android:singleLine="true"
+            android:textColor="@android:color/white"
+            android:textColorHint="#D7CCC8" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPlayUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="Играть по URL" />
+    </LinearLayout>
 
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
@@ -62,6 +69,7 @@
         app:resize_mode="fit" />
 
     <LinearLayout
+        android:id="@+id/controlsLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"

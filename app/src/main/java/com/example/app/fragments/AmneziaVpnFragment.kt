@@ -1,9 +1,12 @@
 package com.example.app.fragments
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
-import android.net.VpnService
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
+import android.net.VpnService
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -31,10 +34,21 @@ class AmneziaVpnFragment : Fragment() {
     private lateinit var connectButton: Button
     private lateinit var disconnectButton: Button
 
-    private var backend: GoBackend? = null
-    private var tunnel: Tunnel? = null
-    private var config: Config? = null
-    private var configUri: Uri? = null
+    private var backend: GoBackend?
+        get() = sharedBackend
+        set(value) { sharedBackend = value }
+
+    private var tunnel: Tunnel?
+        get() = sharedTunnel
+        set(value) { sharedTunnel = value }
+
+    private var config: Config?
+        get() = sharedConfig
+        set(value) { sharedConfig = value }
+
+    private var configUri: Uri?
+        get() = sharedConfigUri
+        set(value) { sharedConfigUri = value }
 
     private val vpnPermissionLauncher =
         registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) {
@@ -93,9 +107,85 @@ class AmneziaVpnFragment : Fragment() {
             disconnect()
         }
 
-        // com.zaneschepke / wgtunnel fork: GoBackend(Context, TunnelActionHandler)
-        backend = GoBackend(requireContext(), noopActionHandler)
-        showStatus("● VPN отключён", false)
+        // Переиспользуем backend, чтобы состояние туннеля не терялось при смене вкладок
+        if (backend == null) {
+            backend = GoBackend(requireContext().applicationContext, noopActionHandler)
+        }
+
+        // Восстанавливаем текст конфигурации, если она уже была загружена ранее
+        restoreConfigText()
+
+        // Проверяем реальное состояние подключения при открытии вкладки
+        checkConnectionState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // При каждом возврате на вкладку обновляем статус
+        if (::statusText.isInitialized) {
+            checkConnectionState()
+        }
+    }
+
+    /**
+     * Проверяет, активно ли VPN-подключение (через ConnectivityManager и состояние backend),
+     * и обновляет UI.
+     */
+    private fun checkConnectionState() {
+        val vpnActive = isVpnActive()
+        val backendUp = try {
+            val t = tunnel
+            val b = backend
+            if (t != null && b != null) {
+                b.getState(t) == Tunnel.State.UP
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+
+        val connected = vpnActive || backendUp
+
+        if (connected) {
+            showStatus("● VPN подключён", true)
+        } else {
+            showStatus("● VPN отключён", false)
+            // Если туннель в backend ещё числится, но VPN уже нет — сбрасываем
+            if (tunnel != null && !vpnActive) {
+                tunnel = null
+            }
+        }
+    }
+
+    private fun isVpnActive(): Boolean {
+        return try {
+            val cm = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun restoreConfigText() {
+        val uri = configUri
+        val cfg = config
+        if (uri != null && cfg != null) {
+            val endpoint = cfg.getPeers().firstOrNull()?.getEndpoint()
+                ?.map { it.toString() }?.orElse("не указан") ?: "не указан"
+            val address = cfg.getInterface().getAddresses().joinToString()
+            val dns = cfg.getInterface().getDnsServers().joinToString()
+
+            configText.text = "Файл: ${uri.lastPathSegment ?: "config.conf"}\n" +
+                    "Адрес: $address\n" +
+                    "Сервер: $endpoint\n" +
+                    "DNS: $dns\n" +
+                    "Протокол: AmneziaWG"
+        } else {
+            configText.text = "Конфигурация не выбрана"
+        }
     }
 
     private fun loadConfig(uri: Uri) {
@@ -128,7 +218,7 @@ class AmneziaVpnFragment : Fragment() {
                         "Протокол: AmneziaWG"
 
                 Toast.makeText(requireContext(), "Конфигурация загружена", Toast.LENGTH_SHORT).show()
-                showStatus("● VPN отключён", false)
+                checkConnectionState()
             } catch (e: Exception) {
                 config = null
                 showStatus("Ошибка конфигурации", false)
@@ -225,6 +315,7 @@ class AmneziaVpnFragment : Fragment() {
     }
 
     private fun showStatus(text: String, connected: Boolean) {
+        if (!::statusText.isInitialized) return
         statusText.text = text
         statusText.alpha = if (connected) 1.0f else 0.75f
         connectButton.isEnabled = !connected && config != null
@@ -235,5 +326,14 @@ class AmneziaVpnFragment : Fragment() {
         super.onDestroyView()
         // Не отключаем VPN при уничтожении Fragment.
         // VPN должен продолжать работать, пока пользователь явно не нажмёт «Отключить».
+        // Backend и tunnel хранятся в companion object и переживают смену вкладок.
+    }
+
+    companion object {
+        // Общее состояние между пересозданиями фрагмента (при смене вкладок)
+        private var sharedBackend: GoBackend? = null
+        private var sharedTunnel: Tunnel? = null
+        private var sharedConfig: Config? = null
+        private var sharedConfigUri: Uri? = null
     }
 }

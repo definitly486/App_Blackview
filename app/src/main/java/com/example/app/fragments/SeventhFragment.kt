@@ -10,6 +10,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
+import com.example.app.shell.PackageSessionInstaller
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.fragment.app.Fragment
 import com.example.app.R
 import java.io.DataOutputStream
@@ -73,11 +78,97 @@ class SeventhFragment  : Fragment()  {
     }
 
     private fun installBINANCE() {
-        val folder = getDownloadFolder2() ?: return
-        val apkFile = File(folder, "com.binance.dev-100300004.xapk")
+        val publicDownloads = getDownloadFolder2() ?: run {
+            Toast.makeText(requireContext(), "Не удалось получить папку Download", Toast.LENGTH_LONG).show()
+            return
+        }
 
-        // Начинаем скачивание
-        downloadHelper.downloadToPublic("https://github.com/definitly486/redmia5/releases/download/apk/com.binance.dev-100300004.xapk")
+        val xapkName = "com.binance.dev-100300004.xapk"
+        val xapkFile = File(publicDownloads, xapkName)
+
+        // Скачиваем именно в общедоступную Download. После завершения
+        // callback автоматически распакует XAPK и передаст APK системному установщику.
+        downloadHelper.downloadFileToPublic(
+            url = "https://github.com/definitly486/redmia5/releases/download/apk/$xapkName",
+            onComplete = { downloaded ->
+                if (downloaded == null) {
+                    Toast.makeText(requireContext(), "Ошибка загрузки Binance", Toast.LENGTH_LONG).show()
+                    return@downloadFileToPublic
+                }
+
+                lifecycleScope.launch {
+                    val apkFiles = withContext(Dispatchers.IO) {
+                        unzipBinance(downloaded, publicDownloads)
+                    }
+
+                    if (apkFiles.isEmpty()) {
+                        Toast.makeText(requireContext(), "В XAPK не найдены APK-файлы", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+
+                    Toast.makeText(
+                        requireContext(),
+                        "Распаковка завершена: ${apkFiles.size} APK. Запуск установки…",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    val result = PackageSessionInstaller.installAll(requireContext(), apkFiles)
+                    val message = if (result.ok) {
+                        "Binance успешно установлен"
+                    } else {
+                        "Ошибка установки Binance: ${result.message ?: "неизвестная ошибка"}"
+                    }
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                }
+            }
+        )
+    }
+
+    /** Распаковывает XAPK в общедоступный Download/Binance и возвращает APK-файлы. */
+    private fun unzipBinance(xapkFile: File, publicDownloads: File): List<File> {
+        val outputDir = File(publicDownloads, "Binance")
+        if (!outputDir.exists() && !outputDir.mkdirs()) return emptyList()
+
+        val apkFiles = mutableListOf<File>()
+
+        return try {
+            FileInputStream(xapkFile).use { fis ->
+                ZipInputStream(fis).use { zis ->
+                    var entry: ZipEntry?
+                    while (zis.nextEntry.also { entry = it } != null) {
+                        val current = entry ?: continue
+                        val dest = File(outputDir, current.name)
+                        val canonicalDir = outputDir.canonicalFile
+                        val canonicalDest = dest.canonicalFile
+
+                        // Защита от ../ внутри архива.
+                        if (canonicalDest != canonicalDir &&
+                            !canonicalDest.path.startsWith(canonicalDir.path + File.separator)
+                        ) {
+                            zis.closeEntry()
+                            continue
+                        }
+
+                        if (current.isDirectory) {
+                            dest.mkdirs()
+                        } else {
+                            dest.parentFile?.mkdirs()
+                            FileOutputStream(dest).use { fos ->
+                                zis.copyTo(fos)
+                            }
+                            if (dest.extension.equals("apk", ignoreCase = true)) {
+                                apkFiles += dest
+                            }
+                        }
+                        zis.closeEntry()
+                    }
+                }
+            }
+            apkFiles.filter { it.isFile && it.length() > 0L }.sortedBy { it.name }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
 
 

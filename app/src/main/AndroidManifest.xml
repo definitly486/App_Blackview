@@ -58,6 +58,16 @@
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
+        <!-- AmneziaWG userspace VPN backend -->
+        <service
+            android:name="org.amnezia.awg.backend.GoBackend$VpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name=".MainActivity"
             android:windowSoftInputMode="adjustResize"

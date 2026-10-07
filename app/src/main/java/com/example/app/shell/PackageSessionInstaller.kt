@@ -26,6 +26,50 @@ object PackageSessionInstaller {
     private const val ACTION_PREFIX = "com.example.app.INSTALL_RESULT."
     private const val USER_TIMEOUT_MS = 5 * 60_000L
 
+    /** Устанавливает один APK или набор split APK из одного XAPK. */
+    suspend fun installAll(context: Context, apks: List<File>): Result {
+        if (apks.isEmpty()) return Result(false, "Нет APK для установки")
+        if (apks.size == 1) return install(context, apks.first())
+
+        val app = context.applicationContext
+        val installer = app.packageManager.packageInstaller
+        val sessionId = try {
+            withContext(Dispatchers.IO) {
+                val totalSize = apks.sumOf { it.length() }
+                val params = PackageInstaller.SessionParams(
+                    PackageInstaller.SessionParams.MODE_FULL_INSTALL
+                ).apply {
+                    setSize(totalSize)
+                    setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+                }
+                val id = installer.createSession(params)
+                try {
+                    installer.openSession(id).use { session ->
+                        apks.forEachIndexed { index, apk ->
+                            apk.inputStream().use { input ->
+                                session.openWrite(apk.name.ifBlank { "split-$index.apk" }, 0, apk.length()).use { out ->
+                                    input.copyTo(out)
+                                    session.fsync(out)
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    runCatching { installer.abandonSession(id) }
+                    throw e
+                }
+                id
+            }
+        } catch (e: Exception) {
+            return Result(false, e.message ?: e.javaClass.simpleName)
+        }
+
+        return withContext(Dispatchers.Main) {
+            withTimeoutOrNull(USER_TIMEOUT_MS) { commitAndWait(app, installer, sessionId) }
+                ?: Result(false, "Нет ответа от установщика")
+        }
+    }
+
     suspend fun install(context: Context, apk: File): Result {
         val app = context.applicationContext
         val installer = app.packageManager.packageInstaller

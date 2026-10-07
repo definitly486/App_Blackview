@@ -12,6 +12,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.setPadding
 import com.example.app.fragments.FirstFragment
+import com.example.app.fragments.AmneziaVpnFragment
 import com.example.app.fragments.GpgDecryptFragment
 import com.example.app.fragments.NinthFragment
 import com.example.app.fragments.SecondFragment
@@ -26,6 +27,7 @@ class MainActivity : AppCompatActivity() {
 
     private val fragmentFactories = listOf(
         ::FirstFragment,
+        ::AmneziaVpnFragment,
         ::SecondFragment,
         ::ThirdFragment,
         ::SixthFragment,
@@ -38,7 +40,7 @@ class MainActivity : AppCompatActivity() {
     )
 
     private val buttonTitles = listOf(
-        "Первая", "Вторая", "Третья", "Git Clone", "Седьмая",
+        "Первая", "Amnezia VPN", "Вторая", "Третья", "Git Clone", "Седьмая",
         "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Настройка"
     )
 

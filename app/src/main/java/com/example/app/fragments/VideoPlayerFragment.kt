@@ -5,10 +5,12 @@ package com.example.app.fragments
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -32,11 +34,13 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.example.app.R
+import kotlin.math.abs
 
 /**
  * Простой видеоплеер на Media3 / ExoPlayer.
  * Выбор файла, URL, play/pause, стоп, fullscreen, запоминание позиции.
  * Видео не останавливается при повороте экрана (configChanges в манифесте).
+ * Вертикальный свайп по экрану (правая половина) — изменение громкости.
  */
 class VideoPlayerFragment : Fragment() {
 
@@ -55,6 +59,12 @@ class VideoPlayerFragment : Fragment() {
     private var currentUri: Uri? = null
     private var isFullscreen = false
     private var savedOrientation: Int = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+
+    private lateinit var audioManager: AudioManager
+    private var volumeGestureStartY = 0f
+    private var volumeGestureStartVolume = 0
+    private var isVolumeGestureActive = false
+    private var volumeToast: Toast? = null
 
     private val prefs by lazy {
         requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -126,9 +136,82 @@ class VideoPlayerFragment : Fragment() {
             currentUri = null
         }
 
+        audioManager = requireContext().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        setupVolumeGesture()
         setupFullscreen()
 
         return root
+    }
+
+    /**
+     * Вертикальный свайп по правой половине экрана плеера меняет системную громкость.
+     * Свайп вверх — громче, вниз — тише. Показывается Toast с текущим уровнем.
+     * Горизонтальные жесты и тапы по-прежнему обрабатываются контроллером PlayerView.
+     */
+    @OptIn(UnstableApi::class)
+    private fun setupVolumeGesture() {
+        val touchSlop = android.view.ViewConfiguration.get(requireContext()).scaledTouchSlop
+        var volumeConfirmed = false
+
+        playerView.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    // Кандидат на жест громкости — только правая половина
+                    if (event.x >= v.width * 0.5f) {
+                        isVolumeGestureActive = true
+                        volumeConfirmed = false
+                        volumeGestureStartY = event.y
+                        volumeGestureStartVolume =
+                            audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    } else {
+                        isVolumeGestureActive = false
+                        volumeConfirmed = false
+                    }
+                    // Не перехватываем DOWN — контроллер PlayerView получает тап/seek
+                    false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!isVolumeGestureActive) return@setOnTouchListener false
+
+                    val dy = volumeGestureStartY - event.y
+                    // Подтверждаем вертикальный жест только после преодоления touchSlop
+                    if (!volumeConfirmed) {
+                        if (abs(dy) > touchSlop) {
+                            volumeConfirmed = true
+                        } else {
+                            return@setOnTouchListener false
+                        }
+                    }
+
+                    val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    // Чувствительность: ~половина высоты экрана = весь диапазон громкости
+                    val sensitivity = maxVolume.toFloat() / (v.height * 0.5f).coerceAtLeast(1f)
+                    val delta = (dy * sensitivity).toInt()
+                    val newVolume = (volumeGestureStartVolume + delta).coerceIn(0, maxVolume)
+                    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
+                    showVolumeIndicator(newVolume, maxVolume)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val wasActive = isVolumeGestureActive && volumeConfirmed
+                    isVolumeGestureActive = false
+                    volumeConfirmed = false
+                    // Перехватываем UP только если реально меняли громкость
+                    wasActive
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun showVolumeIndicator(current: Int, max: Int) {
+        val percent = if (max > 0) (current * 100 / max) else 0
+        volumeToast?.cancel()
+        volumeToast = Toast.makeText(
+            requireContext(),
+            "🔊 $percent%",
+            Toast.LENGTH_SHORT
+        ).also { it.show() }
     }
 
     @OptIn(UnstableApi::class)
@@ -256,6 +339,8 @@ class VideoPlayerFragment : Fragment() {
         if (isFullscreen) {
             toggleFullscreen(false)
         }
+        volumeToast?.cancel()
+        volumeToast = null
         releasePlayer()
         super.onDestroyView()
     }

@@ -26,6 +26,7 @@ object DeviceSetup {
         Step("Wi-Fi: подключение к $WIFI_SSID",
             "cmd wifi connect-network \"$WIFI_SSID\" wpa2 \"$WIFI_PASSWORD\""),
         Step("Режим энергосбережения", "settings put global low_power 1"),
+        Step("Отключить постоянный поиск Wi-Fi (сканирование сетей)", "settings put global wifi_scan_always_enabled 0"),
         Step("Отключить Google Play services", "pm disable-user --user 0 com.google.android.gms"),
         Step("Беззвучный режим", "cmd audio set-ringer-mode SILENT"),
         Step("Яркость: автояркость выкл", "settings put system screen_brightness_mode 0"),

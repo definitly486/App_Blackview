@@ -17,21 +17,34 @@
             android:textStyle="bold"
             android:textColor="?android:attr/textColorPrimary" />
 
-        <TextView
-            android:id="@+id/amneziaStatus"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="● VPN отключён"
-            android:textSize="17sp" />
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="@drawable/info_card">
 
-        <TextView
-            android:id="@+id/amneziaConfig"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Конфигурация не выбрана"
-            android:textIsSelectable="true" />
+            <TextView
+                android:id="@+id/amneziaStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="● VPN отключён"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_off" />
+
+            <TextView
+                android:id="@+id/amneziaConfig"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Конфигурация не выбрана"
+                android:textSize="17sp"
+                android:textColor="@color/info_text"
+                android:lineSpacingExtra="6dp"
+                android:textIsSelectable="true" />
+        </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/amneziaOpen"

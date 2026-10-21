@@ -115,17 +115,17 @@ class AmneziaVpnFragment : Fragment() {
     private fun render(status: AwgVpnController.Status) {
         val detail = if (status.detail.isNotEmpty()) " (${status.detail})" else ""
         when (status.phase) {
-            Phase.DISCONNECTED -> showStatus("● VPN отключён", false)
-            Phase.CONNECTING -> showStatus("● VPN подключается…$detail", true)
-            Phase.WAITING_NETWORK -> showStatus("● Ожидание сети…", true)
-            Phase.CONNECTED -> showStatus("● VPN подключён", true)
+            Phase.DISCONNECTED -> showStatus("● VPN отключён", false, R.color.status_off)
+            Phase.CONNECTING -> showStatus("● VPN подключается…$detail", true, R.color.status_busy)
+            Phase.WAITING_NETWORK -> showStatus("● Ожидание сети…", true, R.color.status_busy)
+            Phase.CONNECTED -> showStatus("● VPN подключён", true, R.color.status_on)
         }
     }
 
-    private fun showStatus(text: String, active: Boolean) {
+    private fun showStatus(text: String, active: Boolean, colorRes: Int) {
         if (!::statusText.isInitialized) return
         statusText.text = text
-        statusText.alpha = if (active) 1.0f else 0.75f
+        statusText.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), colorRes))
         connectButton.isEnabled = !active && config != null
         disconnectButton.isEnabled = active
     }
@@ -175,7 +175,7 @@ class AmneziaVpnFragment : Fragment() {
                 render(AwgVpnController.status.value)
             } catch (e: Exception) {
                 config = null
-                showStatus("Ошибка конфигурации", false)
+                showStatus("● Ошибка конфигурации", false, R.color.status_off)
                 Toast.makeText(
                     requireContext(),
                     "Не удалось прочитать конфиг: ${e.message}",

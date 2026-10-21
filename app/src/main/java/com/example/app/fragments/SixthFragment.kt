@@ -12,7 +12,6 @@ import android.widget.EditText
 import android.widget.Toast
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.graphics.Color
 import android.view.Gravity

@@ -55,6 +55,10 @@ class GitRepositoryCloner(context: Context) {
                 }
 
                 override fun isCancelled(): Boolean = false
+
+                override fun showDuration(enabled: Boolean) {
+                    // Duration display is handled by the fragment progress label.
+                }
             }
 
             Git.cloneRepository()

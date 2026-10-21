@@ -30,6 +30,7 @@ class GitRepositoryCloner(context: Context) {
     suspend fun clone(
         repositoryUrl: String,
         destination: File = defaultDestination(),
+        isCancelled: () -> Boolean = { false },
         onProgress: (task: String, completed: Int, total: Int) -> Unit = { _, _, _ -> }
     ): Result<File> = withContext(Dispatchers.IO) {
         var destinationPreparedByThisCall = false
@@ -55,11 +56,12 @@ class GitRepositoryCloner(context: Context) {
             destinationPreparedByThisCall = true
 
             tuneJGitMemory()
-            val monitor = createProgressMonitor(onProgress)
+            val monitor = createProgressMonitor(onProgress, isCancelled)
             var lastError: Throwable? = null
             var succeeded = false
 
             for (attempt in 1..CLONE_ATTEMPTS) {
+                if (isCancelled()) throw IOException("Клонирование отменено")
                 if (attempt > 1) {
                     val pauseMs = 2_000L * attempt
                     delay(pauseMs)
@@ -71,7 +73,7 @@ class GitRepositoryCloner(context: Context) {
                     break
                 } catch (error: Exception) {
                     lastError = error
-                    if (!isTransientNetworkError(error)) throw error
+                    if (isCancelled() || !isTransientNetworkError(error)) throw error
                 } catch (oom: OutOfMemoryError) {
                     // OOM - это Error, а не Exception: без этого приложение падало бы целиком
                     lastError = oom
@@ -156,7 +158,8 @@ class GitRepositoryCloner(context: Context) {
     }
 
     private fun createProgressMonitor(
-        onProgress: (task: String, completed: Int, total: Int) -> Unit
+        onProgress: (task: String, completed: Int, total: Int) -> Unit,
+        cancelCheck: () -> Boolean
     ): ProgressMonitor = object : ProgressMonitor {
         private var taskName = "Подготовка клонирования"
         private var total = 0
@@ -183,7 +186,7 @@ class GitRepositoryCloner(context: Context) {
             onProgress(taskName, completed, total)
         }
 
-        override fun isCancelled(): Boolean = false
+        override fun isCancelled(): Boolean = cancelCheck()
 
         override fun showDuration(enabled: Boolean) {
             // Duration is displayed by the fragment progress label.

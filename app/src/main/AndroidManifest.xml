@@ -15,6 +15,11 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
+    <!-- Git clone в фоне: foreground-сервис + уведомление с прогрессом -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Доступ к API Shizuku (запуск команд с правами shell без root) -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
@@ -58,6 +63,12 @@
             android:exported="true"
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <!-- Клонирование репозитория не прерывается при смене вкладки -->
+        <service
+            android:name=".git.GitCloneService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- AmneziaWG userspace VPN backend -->
         <service

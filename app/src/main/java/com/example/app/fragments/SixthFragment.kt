@@ -68,6 +68,7 @@ class SixthFragment : Fragment() {
         cloneButton.isEnabled = false
         progressBar.visibility = View.VISIBLE
         progressText.visibility = View.VISIBLE
+        progressText.setTextColor(Color.WHITE)
         progressBar.isIndeterminate = true
         progressText.text = "Подключение к репозиторию…"
 
@@ -91,19 +92,22 @@ class SixthFragment : Fragment() {
                 onSuccess = {
                     progressBar.isIndeterminate = false
                     progressBar.progress = progressBar.max
-                    progressText.text = "Клонирование завершено: 100%"
+                    progressText.setTextColor(Color.WHITE)
+                    progressText.text = "КЛОНИРОВАНИЕ ЗАВЕРШЕНО: 100%\nПапка: ${it.absolutePath}"
                     Toast.makeText(
                         requireContext(),
                         "Репозиторий '$repoName' успешно клонирован.",
                         Toast.LENGTH_SHORT
                     ).show()
                 },
-                onFailure = {
-                    progressBar.visibility = View.GONE
-                    progressText.visibility = View.GONE
+                onFailure = { error ->
+                    progressBar.isIndeterminate = false
+                    progressBar.progress = 0
+                    progressText.setTextColor(Color.WHITE)
+                    progressText.text = "ОШИБКА КЛОНИРОВАНИЯ\n${error.message ?: error.javaClass.simpleName}\nПодробности: adb logcat -s GitClone"
                     Toast.makeText(
                         requireContext(),
-                        "Ошибка клонирования: ${it.message ?: "неизвестная ошибка"}",
+                        "Ошибка клонирования. Подробности доступны в adb logcat -s GitClone",
                         Toast.LENGTH_LONG
                     ).show()
                 }

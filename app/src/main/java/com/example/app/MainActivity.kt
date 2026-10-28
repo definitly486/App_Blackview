@@ -12,6 +12,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.setPadding
 import com.example.app.fragments.FirstFragment
+import com.example.app.fragments.AmneziaVpnFragment
 import com.example.app.fragments.GpgDecryptFragment
 import com.example.app.fragments.NinthFragment
 import com.example.app.fragments.SecondFragment
@@ -21,11 +22,13 @@ import com.example.app.fragments.SixthFragment
 import com.example.app.fragments.TenthFragment
 import com.example.app.fragments.TerminalFragment
 import com.example.app.fragments.ThirdFragment
+import com.example.app.fragments.VideoPlayerFragment
 
 class MainActivity : AppCompatActivity() {
 
     private val fragmentFactories = listOf(
         ::FirstFragment,
+        ::AmneziaVpnFragment,
         ::SecondFragment,
         ::ThirdFragment,
         ::SixthFragment,
@@ -34,19 +37,19 @@ class MainActivity : AppCompatActivity() {
         ::GpgDecryptFragment,
         ::TenthFragment,
         ::TerminalFragment,
+        ::VideoPlayerFragment,
         ::SetupFragment
     )
 
     private val buttonTitles = listOf(
-        "Первая", "Вторая", "Третья", "Git Clone", "Седьмая",
-        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Настройка"
+        "Первая", "Amnezia VPN", "Вторая", "Третья", "Git Clone", "Седьмая",
+        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Видео", "Настройка"
     )
 
     private var selectedButton: Button? = null
     private lateinit var buttonsContainer: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Android 15 (targetSdk 35): edge-to-edge включён принудительно — обрабатываем insets сами
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)

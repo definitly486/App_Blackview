@@ -7,7 +7,7 @@ if ! command -v gh >/dev/null 2>&1; then
     exit 1
 fi
 
-APK_DIR="$HOME/App_Blackview/app/build/outputs/apk/release"
+APK_DIR="/ntfs-2TB/GIT/App_Blackview/app/build/outputs/apk/release"
 
 # Проверка существования директории
 if [ ! -d "$APK_DIR" ]; then

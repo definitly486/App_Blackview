@@ -159,6 +159,34 @@ class DownloadHelper(context: Context) {
         )
     }
 
+    /** Скачивает файл в общедоступную папку Download и сообщает о завершении. */
+    fun downloadFileToPublic(url: String, onComplete: ((File?) -> Unit)? = null) {
+        val dir = publicDownloadsDir() ?: run {
+            toast("Нет доступа к папке загрузок")
+            onComplete?.invoke(null)
+            return
+        }
+
+        val fileName = fileNameFromUrl(url)
+        val target = File(dir, fileName)
+
+        if (target.exists()) {
+            onComplete?.invoke(target)
+            toast("Файл уже существует: $fileName")
+            return
+        }
+
+        if (!ensureNetwork()) {
+            onComplete?.invoke(null)
+            return
+        }
+
+        enqueue(url, fileName, target, DestinationType.PUBLIC) { file ->
+            onComplete?.invoke(file)
+        }
+        toast("Загрузка начата: $fileName")
+    }
+
     fun downloadToPublic(url: String) {
         val fileName = fileNameFromUrl(url)
         val dir = publicDownloadsDir() ?: run {

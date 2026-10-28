@@ -15,6 +15,11 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
+    <!-- Git clone в фоне: foreground-сервис + уведомление с прогрессом -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Доступ к API Shizuku (запуск команд с правами shell без root) -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
 
@@ -33,6 +38,7 @@
 
     <application
         android:allowBackup="true"
+        android:largeHeap="true"
         android:icon="@mipmap/ic_la"
         android:label="@string/app_name"
         android:theme="@style/Theme.App"
@@ -58,8 +64,25 @@
             android:multiprocess="false"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
+        <!-- Клонирование репозитория не прерывается при смене вкладки -->
+        <service
+            android:name=".git.GitCloneService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- AmneziaWG userspace VPN backend -->
+        <service
+            android:name="org.amnezia.awg.backend.GoBackend$VpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
             <intent-filter>

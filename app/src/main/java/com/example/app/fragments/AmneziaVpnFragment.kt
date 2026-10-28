@@ -17,6 +17,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.app.R
+import com.example.app.vpn.AwgConfigNormalizer
 import com.example.app.vpn.AwgVpnController
 import com.example.app.vpn.AwgVpnController.Phase
 import kotlinx.coroutines.Dispatchers
@@ -87,7 +88,12 @@ class AmneziaVpnFragment : Fragment() {
         val file = savedConfigFile
         if (!file.exists()) return
         try {
-            val parsed = file.inputStream().use { Config.parse(it) }
+            val parsed = Config.parse(
+                ByteArrayInputStream(
+                    AwgConfigNormalizer.normalize(file.readText(StandardCharsets.UTF_8))
+                        .toByteArray(StandardCharsets.UTF_8)
+                )
+            )
             val name = prefs.getString(KEY_CONFIG_NAME, null) ?: "config.conf"
             config = parsed
             configUri = Uri.fromFile(file)
@@ -199,7 +205,9 @@ class AmneziaVpnFragment : Fragment() {
 
                 val parsed = withContext(Dispatchers.Default) {
                     Config.parse(
-                        ByteArrayInputStream(text.toByteArray(StandardCharsets.UTF_8))
+                        ByteArrayInputStream(
+                            AwgConfigNormalizer.normalize(text).toByteArray(StandardCharsets.UTF_8)
+                        )
                     )
                 }
 

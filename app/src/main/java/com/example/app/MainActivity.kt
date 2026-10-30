@@ -3,6 +3,7 @@
 package com.example.app
 
 import android.os.Bundle
+import android.view.MotionEvent
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.activity.enableEdgeToEdge
@@ -110,6 +111,18 @@ class MainActivity : AppCompatActivity() {
                 openFragment(index)
             }
 
+            // Подсветка следует за пальцем при проведении по списку кнопок.
+            // Возвращаем false, чтобы стандартное нажатие и click продолжали работать.
+            button.setOnTouchListener { _, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE ->
+                        updateSwipeHighlight(event.rawX, event.rawY)
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        clearSwipeHighlight()
+                }
+                false
+            }
+
             buttonsContainer.addView(button)
 
             if (index == savedIndex) {
@@ -120,6 +133,25 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState != null && savedIndex in fragmentFactories.indices) {
             openFragment(savedIndex)
+        }
+    }
+
+    private fun updateSwipeHighlight(rawX: Float, rawY: Float) {
+        for (i in 0 until buttonsContainer.childCount) {
+            val child = buttonsContainer.getChildAt(i) as? Button ?: continue
+            val location = IntArray(2)
+            child.getLocationOnScreen(location)
+            val isUnderFinger = rawX >= location[0] &&
+                rawX < location[0] + child.width &&
+                rawY >= location[1] &&
+                rawY < location[1] + child.height
+            child.isPressed = isUnderFinger
+        }
+    }
+
+    private fun clearSwipeHighlight() {
+        for (i in 0 until buttonsContainer.childCount) {
+            buttonsContainer.getChildAt(i).isPressed = false
         }
     }
 

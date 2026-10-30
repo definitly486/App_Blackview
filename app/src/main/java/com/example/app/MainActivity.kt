@@ -76,6 +76,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Обрабатываем жест на уровне Activity: ScrollView может перехватить MOVE
+    // для прокрутки, но подсветка при этом всё равно должна следовать за пальцем.
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (::buttonsContainer.isInitialized) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE ->
+                    updateSwipeHighlight(event.rawX, event.rawY)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    clearSwipeHighlight()
+            }
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         val selectedIndex = selectedButton?.let { button ->
@@ -109,18 +123,6 @@ class MainActivity : AppCompatActivity() {
                 button.isSelected = true
                 selectedButton = button
                 openFragment(index)
-            }
-
-            // Подсветка следует за пальцем при проведении по списку кнопок.
-            // Возвращаем false, чтобы стандартное нажатие и click продолжали работать.
-            button.setOnTouchListener { _, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE ->
-                        updateSwipeHighlight(event.rawX, event.rawY)
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
-                        clearSwipeHighlight()
-                }
-                false
             }
 
             buttonsContainer.addView(button)

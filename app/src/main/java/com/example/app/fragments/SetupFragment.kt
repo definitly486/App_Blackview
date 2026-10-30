@@ -20,6 +20,7 @@ import com.example.app.shell.BlockPermissions
 import com.example.app.shell.DeviceSetup
 import com.example.app.shell.WifiConnector
 import com.example.app.shell.SelfApkSaver
+import com.example.app.shell.ApkInstaller
 import com.example.app.shell.ShizukuInstaller
 import kotlinx.coroutines.launch
 
@@ -97,6 +98,7 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
         }
 
         btnInstall.setOnClickListener { installShizuku() }
+        view.findViewById<Button>(R.id.btnInstallObtainium).setOnClickListener { installObtainium() }
         btnUninstall.setOnClickListener { confirmUninstallShizuku() }
 
         view.findViewById<Button>(R.id.btnConnectWifi).setOnClickListener {
@@ -216,6 +218,16 @@ class SetupFragment : Fragment(R.layout.fragment_setup) {
 
     private fun installShizuku() {
         when (val r = ShizukuInstaller.install(requireContext())) {
+            is ShizukuInstaller.Result.Started -> Unit
+            is ShizukuInstaller.Result.NeedInstallPermission ->
+                Toast.makeText(requireContext(), "Разрешите установку из этого приложения и нажмите кнопку ещё раз", Toast.LENGTH_LONG).show()
+            is ShizukuInstaller.Result.Error ->
+                Toast.makeText(requireContext(), "Ошибка: ${r.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun installObtainium() {
+        when (val r = ApkInstaller.installFromAssets(requireContext(), ApkInstaller.OBTAINIUM_ASSET)) {
             is ShizukuInstaller.Result.Started -> Unit
             is ShizukuInstaller.Result.NeedInstallPermission ->
                 Toast.makeText(requireContext(), "Разрешите установку из этого приложения и нажмите кнопку ещё раз", Toast.LENGTH_LONG).show()

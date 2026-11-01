@@ -119,10 +119,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             button.setOnClickListener {
-                selectedButton?.isSelected = false
-                button.isSelected = true
-                selectedButton = button
-                openFragment(index)
+                selectAndOpen(index, button)
+            }
+
+            // Долгий тап по кнопке — переход туда, куда ведёт кнопка
+            button.setOnLongClickListener {
+                selectAndOpen(index, button)
+                true
             }
 
             buttonsContainer.addView(button)
@@ -139,6 +142,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSwipeHighlight(rawX: Float, rawY: Float) {
+        var foundIndex = -1
         for (i in 0 until buttonsContainer.childCount) {
             val child = buttonsContainer.getChildAt(i) as? Button ?: continue
             val location = IntArray(2)
@@ -148,6 +152,19 @@ class MainActivity : AppCompatActivity() {
                 rawY >= location[1] &&
                 rawY < location[1] + child.height
             child.isPressed = isUnderFinger
+            if (isUnderFinger) {
+                foundIndex = i
+            }
+        }
+        // При свайпе по кнопкам: делаем активной и сразу меняем страницу
+        if (foundIndex >= 0 && foundIndex in fragmentFactories.indices) {
+            val button = buttonsContainer.getChildAt(foundIndex) as? Button
+            if (button != null && button != selectedButton) {
+                selectedButton?.isSelected = false
+                button.isSelected = true
+                selectedButton = button
+                openFragment(foundIndex)
+            }
         }
     }
 
@@ -155,6 +172,14 @@ class MainActivity : AppCompatActivity() {
         for (i in 0 until buttonsContainer.childCount) {
             buttonsContainer.getChildAt(i).isPressed = false
         }
+    }
+
+    private fun selectAndOpen(index: Int, button: Button) {
+        if (index !in fragmentFactories.indices) return
+        selectedButton?.isSelected = false
+        button.isSelected = true
+        selectedButton = button
+        openFragment(index)
     }
 
     private fun openFragment(index: Int) {

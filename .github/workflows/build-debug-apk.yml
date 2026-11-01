@@ -30,6 +30,12 @@ jobs:
           # 'tools' package is removed by Google — do not request it
           packages: platform-tools
 
+      - name: Verify Java
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          which java
+
       - name: Accept licenses & install platform/build-tools
         run: |
           yes | sdkmanager --licenses >/dev/null || true

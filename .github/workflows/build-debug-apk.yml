@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -25,7 +25,16 @@ jobs:
           distribution: "temurin"
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          # 'tools' package is removed by Google — do not request it
+          packages: platform-tools
+
+      - name: Accept licenses & install platform/build-tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" || \
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" || true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -33,16 +42,20 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace --no-daemon
 
-      - name: Find APK
+      - name: Find and list APK
         id: find_apk
         run: |
+          echo "Looking for APKs..."
+          find app/build/outputs -name "*.apk" -exec ls -lh {} \; || true
           APK=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
+          if [ -z "$APK" ]; then
+            echo "No APK found"
+            exit 1
+          fi
           echo "apk_path=$APK" >> $GITHUB_OUTPUT
-          ls -la app/build/outputs/apk/ || true
-          find app/build/outputs -name "*.apk" -exec ls -lh {} \;
+          echo "Found: $APK"
 
       - name: Upload Debug APK
-        if: steps.find_apk.outputs.apk_path != ''
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk

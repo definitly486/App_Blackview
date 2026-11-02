@@ -30,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.bouncycastle.openpgp.PGPDataValidationException
+import android.util.Log
 
 /**
  * Вкладка "GPG Decryptor": расшифровка файла, зашифрованного GPG с паролем
@@ -143,7 +144,8 @@ class GpgDecryptFragment : Fragment() {
                     // 2. Успех — копируем в Загрузки
                     Result.success(saveToDownloads(ctx, tmp, outName))
                 } catch (e: Exception) {
-                    Result.failure(e)
+                       Log.e("GpgDecrypt", "GPG decryption failed", e)
+    Result.failure(e)
                 } finally {
                     tmp.delete()
                     password.fill('\u0000')

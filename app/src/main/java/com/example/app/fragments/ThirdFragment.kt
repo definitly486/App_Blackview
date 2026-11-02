@@ -194,7 +194,7 @@ class ThirdFragment : Fragment() {
 
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                val tmp = File(ctx.cacheDir, "gpg_\${System.currentTimeMillis()}.tmp")
+                val tmp = File(ctx.cacheDir, "gpg_${System.currentTimeMillis()}.tmp")
                 try {
                     val input = ctx.contentResolver.openInputStream(uri)
                         ?: throw IOException("Не удалось открыть выбранный файл")

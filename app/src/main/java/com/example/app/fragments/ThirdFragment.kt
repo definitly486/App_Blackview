@@ -10,6 +10,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.provider.Settings
 import android.content.ContentValues
+import android.app.DownloadManager
 import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
@@ -18,7 +19,6 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.app.R
@@ -38,18 +38,6 @@ class ThirdFragment : Fragment() {
 
     private lateinit var editTextPasswordgnucash: EditText
     private lateinit var editTextPasswordMyPhoneConf: EditText
-
-    private var pendingGpgOutputName: String? = null
-
-    private val gpgInputPicker =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            val outputName = pendingGpgOutputName
-            pendingGpgOutputName = null
-            if (uri != null && outputName != null) {
-                decryptGpgUri(uri, outputName)
-            }
-        }
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -144,9 +132,11 @@ class ThirdFragment : Fragment() {
                 showToast("Пароль не введен. Пожалуйста, введите пароль.")
                 return@setOnClickListener
             }
-            pendingGpgOutputName = "definitly.gnucash"
-            showToast("Выберите файл definitly.gnucash.gpg")
-            gpgInputPicker.launch(arrayOf("*/*"))
+            decryptDownloadedGpgFile(
+                inputName = "definitly.gnucash.gpg",
+                outputName = "definitly.gnucash",
+                password = editTextPasswordgnucash.text.toString()
+            )
         }
     }
 
@@ -164,14 +154,60 @@ class ThirdFragment : Fragment() {
                 showToast("Пароль не введен. Пожалуйста, введите пароль.")
                 return@setOnClickListener
             }
-            pendingGpgOutputName = "my_phone.conf"
-            showToast("Выберите файл my_phone.conf.gpg")
-            gpgInputPicker.launch(arrayOf("*/*"))
+            decryptDownloadedGpgFile(
+                inputName = "my_phone.conf.gpg",
+                outputName = "my_phone.conf",
+                password = editTextPasswordMyPhoneConf.text.toString()
+            )
         }
     }
 
     /**
-     * Читает выбранный через SAF файл, расшифровывает его во временный файл
+     * Находит файл, скачанный этой страницей через DownloadManager.
+     * Системный SAF-выбор здесь не нужен: пользователь уже скачал файл
+     * кнопкой загрузки, поэтому используем URI завершённой загрузки.
+     */
+    private fun findDownloadedFileUri(fileName: String): Uri? {
+        val manager = requireContext().getSystemService(DownloadManager::class.java)
+        val query = DownloadManager.Query()
+            .setFilterByStatus(DownloadManager.STATUS_SUCCESSFUL)
+
+        manager.query(query)?.use { cursor ->
+            val idColumn = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
+            val titleColumn = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)
+            if (idColumn < 0 || titleColumn < 0) return null
+
+            while (cursor.moveToNext()) {
+                if (cursor.getString(titleColumn) == fileName) {
+                    val id = cursor.getLong(idColumn)
+                    manager.getUriForDownloadedFile(id)?.let { return it }
+                }
+            }
+        }
+        return null
+    }
+
+    private fun decryptDownloadedGpgFile(
+        inputName: String,
+        outputName: String,
+        password: String
+    ) {
+        if (password.isBlank()) {
+            showToast("Пароль не введен. Пожалуйста, введите пароль.")
+            return
+        }
+
+        val uri = findDownloadedFileUri(inputName)
+        if (uri == null) {
+            showToast("Файл $inputName не найден среди загрузок приложения. Сначала скачайте его.")
+            return
+        }
+
+        decryptGpgUri(uri, outputName)
+    }
+
+    /**
+     * Расшифровывает URI завершённой загрузки во временный файл
      * и публикует результат в Downloads через MediaStore.
      */
     private fun decryptGpgUri(uri: Uri, outputName: String) {
@@ -206,7 +242,7 @@ class ThirdFragment : Fragment() {
                     saveGpgResultToDownloads(ctx, tmp, outputName)
                     Result.success(Unit)
                 } catch (e: Exception) {
-                    Log.e("GpgDecrypt", "Failed to decrypt \$outputName using SAF", e)
+                    Log.e("GpgDecrypt", "Failed to decrypt $outputName", e)
                     Result.failure(e)
                 } finally {
                     tmp.delete()
@@ -215,7 +251,7 @@ class ThirdFragment : Fragment() {
             }
 
             result.onSuccess {
-                showToast("Файл успешно расшифрован и сохранён в Загрузки: \$outputName")
+                showToast("Файл успешно расшифрован и сохранён в Загрузки: $outputName")
             }.onFailure { e ->
                 val detail = e.message?.takeIf { it.isNotBlank() }
                     ?: e.javaClass.simpleName

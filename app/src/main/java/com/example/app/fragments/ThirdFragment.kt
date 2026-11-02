@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Build
 import android.provider.MediaStore
-import android.provider.OpenableColumns
 import android.provider.Settings
 import android.content.ContentValues
 import android.content.Intent

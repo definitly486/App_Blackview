@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import org.eclipse.jgit.api.Git
+import android.util.Log
 
 class ThirdFragment : Fragment() {
 
@@ -142,6 +143,7 @@ class ThirdFragment : Fragment() {
                         GpgDecryptor().decrypt(input, output, chars)
                         true
                     } catch (_: Exception) {
+    Log.e("GpgDecrypt", "Failed to decrypt definitly.gnucash.gpg", e)
                         output.delete()
                         false
                     } finally {
@@ -194,6 +196,7 @@ class ThirdFragment : Fragment() {
                         GpgDecryptor().decrypt(input, output, chars)
                         true
                     } catch (_: Exception) {
+    Log.e("GpgDecrypt", "Failed to decrypt my_phone.conf.gpg", e)
                         output.delete()
                         false
                     } finally {

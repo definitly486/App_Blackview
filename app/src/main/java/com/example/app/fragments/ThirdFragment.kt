@@ -7,7 +7,9 @@ import com.example.app.download.DownloadHelper
 import android.os.Bundle
 import android.os.Environment
 import android.os.Build
+import android.provider.MediaStore
 import android.provider.Settings
+import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
@@ -16,6 +18,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.app.R
@@ -24,8 +27,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import org.eclipse.jgit.api.Git
 import android.util.Log
+import android.webkit.MimeTypeMap
 
 class ThirdFragment : Fragment() {
 
@@ -33,6 +38,17 @@ class ThirdFragment : Fragment() {
 
     private lateinit var editTextPasswordgnucash: EditText
     private lateinit var editTextPasswordMyPhoneConf: EditText
+
+    private var pendingGpgOutputName: String? = null
+
+    private val gpgInputPicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val outputName = pendingGpgOutputName
+            pendingGpgOutputName = null
+            if (uri != null && outputName != null) {
+                decryptGpgUri(uri, outputName)
+            }
+        }
 
 
     override fun onCreateView(
@@ -124,41 +140,13 @@ class ThirdFragment : Fragment() {
 
     private fun decryptGnucasgpgpButton(view: View) {
         view.findViewById<Button>(R.id.decryptgnucashgpg).setOnClickListener {
-            val password = editTextPasswordgnucash.text.toString()
-            if (password.isBlank()) {
+            if (editTextPasswordgnucash.text.isBlank()) {
                 showToast("Пароль не введен. Пожалуйста, введите пароль.")
                 return@setOnClickListener
             }
-
-            val downloads = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DOWNLOADS
-            )
-            val input = File(downloads, "definitly.gnucash.gpg")
-            val output = File(downloads, "definitly.gnucash")
-
-            lifecycleScope.launch {
-                val success = withContext(Dispatchers.IO) {
-                    val chars = password.toCharArray()
-                    try {
-                        GpgDecryptor().decrypt(input, output, chars)
-                        true
-                    } catch (e: Exception) {
-    Log.e("GpgDecrypt", "Failed to decrypt definitly.gnucash.gpg", e)
-                        output.delete()
-                        false
-                    } finally {
-                        chars.fill('\u0000')
-                    }
-                }
-
-                showToast(
-                    if (success) {
-                        "Файл успешно расшифрован."
-                    } else {
-                        "Ошибка при расшифровке файла."
-                    }
-                )
-            }
+            pendingGpgOutputName = "definitly.gnucash"
+            showToast("Выберите файл definitly.gnucash.gpg")
+            gpgInputPicker.launch(arrayOf("*/*"))
         }
     }
 
@@ -172,46 +160,102 @@ class ThirdFragment : Fragment() {
 
     private fun decryptMyPhoneConfButton(view: View) {
         view.findViewById<Button>(R.id.decryptmyphoneconf).setOnClickListener {
-            val password = editTextPasswordMyPhoneConf.text.toString()
-            if (password.isBlank()) {
+            if (editTextPasswordMyPhoneConf.text.isBlank()) {
                 showToast("Пароль не введен. Пожалуйста, введите пароль.")
                 return@setOnClickListener
             }
+            pendingGpgOutputName = "my_phone.conf"
+            showToast("Выберите файл my_phone.conf.gpg")
+            gpgInputPicker.launch(arrayOf("*/*"))
+        }
+    }
 
-            val downloads = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_DOWNLOADS
-            )
-            val input = File(downloads, "my_phone.conf.gpg")
-            val output = File(downloads, "my_phone.conf")
-
-            if (!input.exists()) {
-                showToast("Файл my_phone.conf.gpg не найден. Сначала скачайте его.")
-                return@setOnClickListener
+    /**
+     * Читает выбранный через SAF файл, расшифровывает его во временный файл
+     * и публикует результат в Downloads через MediaStore.
+     */
+    private fun decryptGpgUri(uri: Uri, outputName: String) {
+        val passwordText = when (outputName) {
+            "definitly.gnucash" -> editTextPasswordgnucash.text.toString()
+            "my_phone.conf" -> editTextPasswordMyPhoneConf.text.toString()
+            else -> {
+                showToast("Неизвестный тип файла")
+                return
             }
+        }
+        if (passwordText.isBlank()) {
+            showToast("Пароль не введен. Пожалуйста, введите пароль.")
+            return
+        }
 
-            lifecycleScope.launch {
-                val success = withContext(Dispatchers.IO) {
-                    val chars = password.toCharArray()
-                    try {
-                        GpgDecryptor().decrypt(input, output, chars)
-                        true
-                    } catch (e: Exception) {
-    Log.e("GpgDecrypt", "Failed to decrypt my_phone.conf.gpg", e)
-                        output.delete()
-                        false
-                    } finally {
-                        chars.fill('\u0000')
+        val password = passwordText.toCharArray()
+        val ctx = requireContext().applicationContext
+        showToast("Расшифровка файла…")
+
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                val tmp = File(ctx.cacheDir, "gpg_${System.currentTimeMillis()}.tmp")
+                try {
+                    val input = ctx.contentResolver.openInputStream(uri)
+                        ?: throw IOException("Не удалось открыть выбранный файл")
+                    input.use { ins ->
+                        tmp.outputStream().use { outs ->
+                            GpgDecryptor().decrypt(ins.buffered(), outs, password)
+                        }
                     }
+                    saveGpgResultToDownloads(ctx, tmp, outputName)
+                    Result.success(Unit)
+                } catch (e: Exception) {
+                    Log.e("GpgDecrypt", "Failed to decrypt \$outputName using SAF", e)
+                    Result.failure(e)
+                } finally {
+                    tmp.delete()
+                    password.fill('\u0000')
                 }
-
-                showToast(
-                    if (success) {
-                        "Файл my_phone.conf успешно расшифрован."
-                    } else {
-                        "Ошибка при расшифровке файла (неверный пароль?)."
-                    }
-                )
             }
+
+            result.onSuccess {
+                showToast("Файл успешно расшифрован и сохранён в Загрузки: \$outputName")
+            }.onFailure { e ->
+                val detail = e.message?.takeIf { it.isNotBlank() }
+                    ?: e.javaClass.simpleName
+                showToast("Ошибка расшифровки: \$detail")
+            }
+        }
+    }
+
+    private fun saveGpgResultToDownloads(
+        ctx: android.content.Context,
+        source: File,
+        outputName: String
+    ) {
+        val extension = outputName.substringAfterLast('.', "").lowercase()
+        val mimeType = MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(extension) ?: "application/octet-stream"
+
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, outputName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+
+        val resolver = ctx.contentResolver
+        val outputUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: throw IOException("Не удалось создать файл в папке Загрузки")
+
+        try {
+            resolver.openOutputStream(outputUri)?.use { output ->
+                source.inputStream().use { input -> input.copyTo(output) }
+            } ?: throw IOException("Не удалось записать результат в папку Загрузки")
+
+            val ready = ContentValues().apply {
+                put(MediaStore.MediaColumns.IS_PENDING, 0)
+            }
+            resolver.update(outputUri, ready, null, null)
+        } catch (e: Exception) {
+            resolver.delete(outputUri, null, null)
+            throw e
         }
     }
 

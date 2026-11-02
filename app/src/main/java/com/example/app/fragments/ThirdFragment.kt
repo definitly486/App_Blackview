@@ -142,7 +142,7 @@ class ThirdFragment : Fragment() {
                     try {
                         GpgDecryptor().decrypt(input, output, chars)
                         true
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
     Log.e("GpgDecrypt", "Failed to decrypt definitly.gnucash.gpg", e)
                         output.delete()
                         false
@@ -195,7 +195,7 @@ class ThirdFragment : Fragment() {
                     try {
                         GpgDecryptor().decrypt(input, output, chars)
                         true
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
     Log.e("GpgDecrypt", "Failed to decrypt my_phone.conf.gpg", e)
                         output.delete()
                         false

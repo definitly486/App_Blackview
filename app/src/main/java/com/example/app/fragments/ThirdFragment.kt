@@ -168,7 +168,7 @@ class ThirdFragment : Fragment() {
      * кнопкой загрузки, поэтому используем URI завершённой загрузки.
      */
     private fun findDownloadedFileUri(fileName: String): Uri? {
-        val manager = requireContext().getSystemService(DownloadManager::class.java)
+        val manager = requireContext().getSystemService(DownloadManager::class.java) ?: return null
         val query = DownloadManager.Query()
             .setFilterByStatus(DownloadManager.STATUS_SUCCESSFUL)
 

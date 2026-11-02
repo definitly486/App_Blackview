@@ -38,6 +38,21 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Release key is supplied by CI through environment variables.
+    // Local builds fall back to the Android debug key when no release key is configured.
+    val releaseStoreFile = System.getenv("RELEASE_STORE_FILE")
+
+    signingConfigs {
+        create("release") {
+            if (!releaseStoreFile.isNullOrBlank()) {
+                storeFile = file(releaseStoreFile)
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -46,7 +61,11 @@ android {
         }
 
       release {
-    signingConfig = signingConfigs.getByName("debug")
+    signingConfig = if (!releaseStoreFile.isNullOrBlank()) {
+        signingConfigs.getByName("release")
+    } else {
+        signingConfigs.getByName("debug")
+    }
 
     isMinifyEnabled = true
     isShrinkResources = true

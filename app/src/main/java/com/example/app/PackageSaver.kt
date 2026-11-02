@@ -165,7 +165,12 @@ fun Context.savePackagesToFile(filename: String): Boolean {
 "com.blackview.theme.icon.vortex",
 "com.blackview.theme.icon.clearwave",
 "com.blackview.theme.icon.blance",
-"com.android.smspush"
+"com.android.smspush",
+"com.android.settings.intelligence",
+"com.android.pacprocessor",
+"com.blackview.darkmode.one",
+"com.blackview.darkmode.two",
+"com.blackview.darkmode.three"      
 
     ).joinToString("\n")
 

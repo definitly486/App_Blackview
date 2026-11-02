@@ -2,4 +2,10 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="info_card_bg">#FF3E2723</color>
+    <color name="info_card_stroke">#FF8D6E63</color>
+    <color name="info_text">#FFFFFFFF</color>
+    <color name="status_off">#FFFFAB91</color>
+    <color name="status_busy">#FFFFE082</color>
+    <color name="status_on">#FFA5F3A0</color>
 </resources>

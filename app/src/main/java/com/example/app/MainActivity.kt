@@ -3,6 +3,7 @@
 package com.example.app
 
 import android.os.Bundle
+import android.view.MotionEvent
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.activity.enableEdgeToEdge
@@ -12,6 +13,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.setPadding
 import com.example.app.fragments.FirstFragment
+import com.example.app.fragments.AmneziaVpnFragment
 import com.example.app.fragments.GpgDecryptFragment
 import com.example.app.fragments.NinthFragment
 import com.example.app.fragments.SecondFragment
@@ -21,11 +23,13 @@ import com.example.app.fragments.SixthFragment
 import com.example.app.fragments.TenthFragment
 import com.example.app.fragments.TerminalFragment
 import com.example.app.fragments.ThirdFragment
+import com.example.app.fragments.VideoPlayerFragment
 
 class MainActivity : AppCompatActivity() {
 
     private val fragmentFactories = listOf(
         ::FirstFragment,
+        ::AmneziaVpnFragment,
         ::SecondFragment,
         ::ThirdFragment,
         ::SixthFragment,
@@ -34,19 +38,19 @@ class MainActivity : AppCompatActivity() {
         ::GpgDecryptFragment,
         ::TenthFragment,
         ::TerminalFragment,
+        ::VideoPlayerFragment,
         ::SetupFragment
     )
 
     private val buttonTitles = listOf(
-        "Первая", "Вторая", "Третья", "Git Clone", "Седьмая",
-        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Настройка"
+        "Первая", "Amnezia VPN", "Вторая", "Третья", "Git Clone", "Седьмая",
+        "OpenSSL Decryptor", "GPG Decryptor", "Десятая", "Terminal", "Видео", "Настройка"
     )
 
     private var selectedButton: Button? = null
     private lateinit var buttonsContainer: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Android 15 (targetSdk 35): edge-to-edge включён принудительно — обрабатываем insets сами
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -70,6 +74,20 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) {
             openFragment(0)
         }
+    }
+
+    // Обрабатываем жест на уровне Activity: ScrollView может перехватить MOVE
+    // для прокрутки, но подсветка при этом всё равно должна следовать за пальцем.
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (::buttonsContainer.isInitialized) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE ->
+                    updateSwipeHighlight(event.rawX, event.rawY)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    clearSwipeHighlight()
+            }
+        }
+        return super.dispatchTouchEvent(event)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -101,10 +119,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             button.setOnClickListener {
-                selectedButton?.isSelected = false
-                button.isSelected = true
-                selectedButton = button
-                openFragment(index)
+                selectAndOpen(index, button)
+            }
+
+            // Долгий тап по кнопке — переход туда, куда ведёт кнопка
+            button.setOnLongClickListener {
+                selectAndOpen(index, button)
+                true
             }
 
             buttonsContainer.addView(button)
@@ -118,6 +139,47 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState != null && savedIndex in fragmentFactories.indices) {
             openFragment(savedIndex)
         }
+    }
+
+    private fun updateSwipeHighlight(rawX: Float, rawY: Float) {
+        var foundIndex = -1
+        for (i in 0 until buttonsContainer.childCount) {
+            val child = buttonsContainer.getChildAt(i) as? Button ?: continue
+            val location = IntArray(2)
+            child.getLocationOnScreen(location)
+            val isUnderFinger = rawX >= location[0] &&
+                rawX < location[0] + child.width &&
+                rawY >= location[1] &&
+                rawY < location[1] + child.height
+            child.isPressed = isUnderFinger
+            if (isUnderFinger) {
+                foundIndex = i
+            }
+        }
+        // При свайпе по кнопкам: делаем активной и сразу меняем страницу
+        if (foundIndex >= 0 && foundIndex in fragmentFactories.indices) {
+            val button = buttonsContainer.getChildAt(foundIndex) as? Button
+            if (button != null && button != selectedButton) {
+                selectedButton?.isSelected = false
+                button.isSelected = true
+                selectedButton = button
+                openFragment(foundIndex)
+            }
+        }
+    }
+
+    private fun clearSwipeHighlight() {
+        for (i in 0 until buttonsContainer.childCount) {
+            buttonsContainer.getChildAt(i).isPressed = false
+        }
+    }
+
+    private fun selectAndOpen(index: Int, button: Button) {
+        if (index !in fragmentFactories.indices) return
+        selectedButton?.isSelected = false
+        button.isSelected = true
+        selectedButton = button
+        openFragment(index)
     }
 
     private fun openFragment(index: Int) {

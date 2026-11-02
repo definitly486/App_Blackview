@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Кнопка под пальцем при проведении -->
+    <item android:state_pressed="true">
+        <shape>
+            <solid android:color="#FFB74D" />
+            <corners android:radius="8dp" />
+            <stroke android:width="2dp" android:color="#FFF3E0" />
+        </shape>
+    </item>
+
     <!-- ПОДСВЕЧЕННАЯ КНОПКА -->
     <item android:state_selected="true">
         <shape>

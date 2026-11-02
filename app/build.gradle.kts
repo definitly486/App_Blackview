@@ -16,7 +16,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.app"
-        minSdk = 35
+        // Android 10 (API 29) is the minimum supported version.
+        minSdk = 29
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -60,24 +61,24 @@ android {
             isDebuggable = true
         }
 
-      release {
-    signingConfig = if (!releaseStoreFile.isNullOrBlank()) {
-        signingConfigs.getByName("release")
-    } else {
-        signingConfigs.getByName("debug")
-    }
+        release {
+            signingConfig = if (!releaseStoreFile.isNullOrBlank()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
-    isMinifyEnabled = true
-    isShrinkResources = true
-    isDebuggable = false
-    applicationIdSuffix = null
-    versionNameSuffix = null
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            applicationIdSuffix = null
+            versionNameSuffix = null
 
-    proguardFiles(
-        getDefaultProguardFile("proguard-android-optimize.txt"),
-        "proguard-rules.pro"
-    )
-}
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
     }
 
     compileOptions {
@@ -162,9 +163,9 @@ private fun quoteBuildConfig(value: String): String = "\"" + value + "\""
 dependencies {
     implementation(libs.bouncycastle.provider)
     implementation(libs.bouncycastle.pgp)
-implementation(libs.media3.exoplayer)
-implementation(libs.media3.ui)
-implementation(libs.media3.common)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.common)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.material)
     implementation(libs.org.eclipse.jgit)

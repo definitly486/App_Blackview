@@ -16,7 +16,7 @@ material = "1.13.0"
 activity = "1.11.0"
 constraintlayout = "2.2.1"
 openpgpLibrary = "1.0.0"
-orgEclipseJgit = "6.4.0.202211300538-r"
+orgEclipseJgit = "6.2.0.202206071550-r"
 viewpager2 = "1.1.0"
 xz = "1.10"
 runtimeSavedInstanceState = "1.0.0-alpha11"
@@ -52,7 +52,7 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 openpgp-library = { module = "org.example:openpgp-library", version.ref = "openpgpLibrary" }
 org-eclipse-jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "orgEclipseJgit" }

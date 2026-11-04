@@ -23,27 +23,38 @@ class DownloadHelper2(private val context: Context) {
     val folder = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
     /** Распаковывает архив и возвращает количество распакованных файлов. */
     fun decompressTarGz(tarGzFile: File, outputDir: File): Int {
+        if (!tarGzFile.isFile) {
+            throw FileNotFoundException("File not found: ${tarGzFile.path}")
+        }
+        if (!outputDir.exists() && !outputDir.mkdirs()) {
+            throw java.io.IOException("Cannot create output directory: ${outputDir.path}")
+        }
+        if (!outputDir.isDirectory || !outputDir.canWrite()) {
+            throw java.io.IOException("Output directory is not writable: ${outputDir.path}")
+        }
+
+        val canonicalOutputDir = outputDir.canonicalFile
+        val outputRoot = canonicalOutputDir.toPath()
         var filesCount = 0
 
-        // Ensure canonical path for security
-        outputDir.canonicalFile
-
-        if (!tarGzFile.exists()) throw FileNotFoundException("File not found: ${tarGzFile.path}") as Throwable
         GzipCompressorInputStream(BufferedInputStream(FileInputStream(tarGzFile))).use { gzIn ->
             TarArchiveInputStream(gzIn).use { tarIn ->
                 generateSequence { tarIn.nextEntry }.forEach { entry ->
+                    val outputFile = File(canonicalOutputDir, entry.name).canonicalFile
+                    if (!outputFile.toPath().startsWith(outputRoot)) {
+                        throw SecurityException("Недопустимый путь в архиве: ${entry.name}")
+                    }
 
-                    val outputFile = File(outputDir, entry.name).canonicalFile
-
-                    // Check if the extracted file stays inside outputDir
-                    // Prevent Zip Slip Vulnerability
-                    // if (!outputFile.toPath().startsWith(canonicalOutputDir.toPath())) {
-                    //     throw SecurityException("Zip Slip vulnerability detected! Malicious entry: ${entry.name}")
-                    //  }
-
-                    if (entry.isDirectory) outputFile.mkdirs()
-                    else {
-                        outputFile.parentFile.mkdirs()
+                    if (entry.isDirectory) {
+                        if (!outputFile.exists() && !outputFile.mkdirs()) {
+                            throw java.io.IOException("Cannot create directory: ${outputFile.path}")
+                        }
+                    } else {
+                        val parent = outputFile.parentFile
+                            ?: throw java.io.IOException("Invalid archive path: ${entry.name}")
+                        if (!parent.exists() && !parent.mkdirs()) {
+                            throw java.io.IOException("Cannot create directory: ${parent.path}")
+                        }
                         outputFile.outputStream().use { outStream ->
                             tarIn.copyTo(outStream)
                         }

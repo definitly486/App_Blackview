@@ -144,7 +144,7 @@ class SixthFragment : Fragment() {
                 requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            pendingStorageStart = launch
+            pendingStorageStart = { startCloneWithNotificationPermission(launch) }
             storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             return
         }

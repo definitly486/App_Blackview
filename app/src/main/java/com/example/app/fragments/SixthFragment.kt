@@ -7,6 +7,10 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Environment
+import android.os.Build
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -36,6 +40,7 @@ import java.io.File
 class SixthFragment : Fragment() {
 
     private var pendingStart: (() -> Unit)? = null
+    private var pendingStorageStart: (() -> Unit)? = null
 
     // Разрешение на уведомления нужно только для показа прогресса в шторке;
     // клонирование запускаем в любом случае.
@@ -44,6 +49,26 @@ class SixthFragment : Fragment() {
             pendingStart?.invoke()
             pendingStart = null
         }
+
+    private val storagePermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val action = pendingStorageStart
+            pendingStorageStart = null
+            if (granted) action?.invoke()
+            else Toast.makeText(requireContext(), "Нужно разрешение на запись в Загрузки", Toast.LENGTH_LONG).show()
+        }
+
+    override fun onResume() {
+        super.onResume()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            Environment.isExternalStorageManager()
+        ) {
+            pendingStorageStart?.let { action ->
+                pendingStorageStart = null
+                action()
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -98,15 +123,45 @@ class SixthFragment : Fragment() {
         val appContext = requireContext().applicationContext
         val launch = { GitCloneManager.start(appContext, url, repoName, destination) }
 
-        val granted = ContextCompat.checkSelfPermission(
-            requireContext(), Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
+        // Для записи в общую папку Downloads нужны разные разрешения на Android 10 и 11+.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                pendingStorageStart = launch
+                try {
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:${requireContext().packageName}")
+                        )
+                    )
+                } catch (_: Exception) {
+                    startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                }
+                Toast.makeText(requireContext(), "Разрешите доступ ко всем файлам и вернитесь в приложение", Toast.LENGTH_LONG).show()
+                return
+            }
+        } else if (ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingStorageStart = launch
+            storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            return
+        }
 
-        if (granted) {
-            launch()
-        } else {
-            pendingStart = { launch() }
+        startCloneWithNotificationPermission(launch)
+    }
+
+    private fun startCloneWithNotificationPermission(launch: () -> Unit) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingStart = launch
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            launch()
         }
     }
 

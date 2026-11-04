@@ -8,7 +8,15 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
-    <!-- Чтение /sdcard/apk без Shizuku -->
+    <!-- Доступ к общему хранилищу на Android 10 (API 29) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"
+        tools:ignore="ScopedStorage" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Доступ ко всем файлам на Android 11+ -->
     <uses-permission
         android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
@@ -37,6 +45,7 @@
     </queries>
 
     <application
+        android:requestLegacyExternalStorage="true"
         android:allowBackup="true"
         android:largeHeap="true"
         android:icon="@mipmap/ic_la"

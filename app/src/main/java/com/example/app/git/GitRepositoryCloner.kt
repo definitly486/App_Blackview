@@ -94,6 +94,18 @@ class GitRepositoryCloner(context: Context) {
                 destination.deleteRecursively()
             }
             Result.failure(error)
+        } catch (error: LinkageError) {
+            // Ошибки несовместимости API библиотек (например, NoSuchMethodError)
+            // не должны завершать весь процесс приложения.
+            if (destinationPreparedByThisCall && destination.exists()) {
+                destination.deleteRecursively()
+            }
+            Result.failure(
+                IOException(
+                    "Git-библиотека несовместима с этой версией Android: " + error.message,
+                    error
+                )
+            )
         }
     }
 

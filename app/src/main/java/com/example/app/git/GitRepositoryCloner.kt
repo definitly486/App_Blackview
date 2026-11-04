@@ -1,6 +1,7 @@
 package com.example.app.git
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -95,6 +96,9 @@ class GitRepositoryCloner(context: Context) {
             }
             Result.failure(error)
         } catch (error: LinkageError) {
+            // Сохраняем полный стек: текст NoSuchMethodError сам по себе не показывает,
+            // какая именно библиотека вызывает отсутствующий Android API.
+            Log.e("GitRepositoryCloner", "JGit/API linkage failure during clone", error)
             // Ошибки несовместимости API библиотек (например, NoSuchMethodError)
             // не должны завершать весь процесс приложения.
             if (destinationPreparedByThisCall && destination.exists()) {

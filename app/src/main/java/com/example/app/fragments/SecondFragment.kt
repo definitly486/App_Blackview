@@ -4,6 +4,7 @@ package com.example.app.fragments
 
 import com.example.app.download.DownloadHelper
 import android.annotation.SuppressLint
+import android.Manifest
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
@@ -473,30 +474,103 @@ class SecondFragment : Fragment() {
     }
 
 
+    private companion object {
+        const val REQUEST_STORAGE_PERMISSION = 1002
+    }
+
+    private fun hasStoragePermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            val ctx = requireContext()
+            ctx.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                PackageManager.PERMISSION_GRANTED &&
+                ctx.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestStoragePermission() {
+        val ctx = requireContext()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:${ctx.packageName}")
+                    )
+                )
+            } catch (_: Exception) {
+                startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            }
+            Toast.makeText(
+                ctx,
+                "Разрешите доступ ко всем файлам и нажмите «Распаковать» ещё раз",
+                Toast.LENGTH_LONG
+            ).show()
+        } else {
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ),
+                REQUEST_STORAGE_PERMISSION
+            )
+        }
+    }
+
+    @Deprecated("Deprecated in Android API; retained for Android 10 runtime permission callback")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_STORAGE_PERMISSION) {
+            if (grantResults.isNotEmpty() &&
+                grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            ) {
+                unpackMain()
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "Для распаковки требуется разрешение на чтение и запись файлов",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
     private fun unpackMain() {
         val ctx = requireContext().applicationContext
+
+        if (!hasStoragePermission()) {
+            requestStoragePermission()
+            return
+        }
+
         val folder = getDownloadFolder()
-        if (folder == null) {
+        if (folder == null || (!folder.exists() && !folder.mkdirs())) {
             Toast.makeText(ctx, "Нет доступа к папке Download", Toast.LENGTH_SHORT).show()
             return
         }
+
         val tarGzFile = File(folder, "main.tar.gz")
-        val outputDir = File(folder, "")
-        if (!tarGzFile.exists()) {
+        if (!tarGzFile.isFile) {
             Toast.makeText(ctx, "Файл main.tar.gz не существует", Toast.LENGTH_SHORT).show()
             return
         }
-        downloadHelper2 = DownloadHelper2(ctx)
 
+        val outputDir = folder
+        val helper = DownloadHelper2(ctx)
         Toast.makeText(ctx, "Начинается распаковка main.tar.gz...", Toast.LENGTH_SHORT).show()
 
-        // Распаковка в фоне, чтобы не блокировать UI
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val count = downloadHelper2.decompressTarGz(tarGzFile, outputDir)
+                val count = helper.decompressTarGz(tarGzFile, outputDir)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        ctx,
+                    if (isAdded) Toast.makeText(
+                        requireContext(),
                         "Распаковка main.tar.gz завершена (файлов: $count)",
                         Toast.LENGTH_LONG
                     ).show()
@@ -504,8 +578,8 @@ class SecondFragment : Fragment() {
             } catch (e: Exception) {
                 Log.e("UnpackMain", "Ошибка распаковки main.tar.gz", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        ctx,
+                    if (isAdded) Toast.makeText(
+                        requireContext(),
                         "Ошибка распаковки main.tar.gz: ${e.message ?: e.javaClass.simpleName}",
                         Toast.LENGTH_LONG
                     ).show()

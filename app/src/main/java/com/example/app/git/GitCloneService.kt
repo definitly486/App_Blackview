@@ -76,13 +76,31 @@ class GitCloneService : Service() {
 
     private fun runClone(url: String, repoName: String, destination: File) {
         cloneJob = serviceScope.launch {
+            val staging = File(cacheDir, "git_clone_${System.currentTimeMillis()}")
             val result = GitRepositoryCloner(applicationContext).clone(
                 repositoryUrl = url,
-                destination = destination,
+                destination = staging,
                 isCancelled = { GitCloneManager.cancelRequested }
             ) { task, completed, total ->
                 GitCloneManager.publishProgress(task, completed, total)
                 notifyProgress(repoName, task, completed, total)
+            }.mapCatching { cloned ->
+                if (GitCloneManager.cancelRequested) throw java.io.IOException("Клонирование отменено")
+                if (destination.exists() && destination.listFiles()?.isNotEmpty() == true) {
+                    throw java.io.IOException("Папка назначения уже существует и не пуста: ${destination.absolutePath}")
+                }
+                if (!destination.exists() && !destination.mkdirs()) {
+                    throw java.io.IOException("Не удалось создать папку: ${destination.absolutePath}")
+                }
+                try {
+                    copyDirectoryContents(cloned, destination)
+                    destination
+                } catch (error: Exception) {
+                    destination.deleteRecursively()
+                    throw error
+                } finally {
+                    staging.deleteRecursively()
+                }
             }
 
             result.fold(
@@ -91,6 +109,7 @@ class GitCloneService : Service() {
                     showResult("Клонирование завершено", "$repoName → ${dir.absolutePath}")
                 },
                 onFailure = { error ->
+                    staging.deleteRecursively()
                     val message = if (GitCloneManager.cancelRequested) {
                         "Клонирование отменено"
                     } else {
@@ -102,6 +121,25 @@ class GitCloneService : Service() {
             )
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
+        }
+    }
+
+    private fun copyDirectoryContents(source: File, destination: File) {
+        val children = source.listFiles()
+            ?: throw java.io.IOException("Не удалось прочитать каталог: ${source.absolutePath}")
+        for (item in children) {
+            if (GitCloneManager.cancelRequested) throw java.io.IOException("Клонирование отменено")
+            val target = File(destination, item.name)
+            if (item.isDirectory) {
+                if (!target.exists() && !target.mkdirs()) {
+                    throw java.io.IOException("Не удалось создать каталог: ${target.absolutePath}")
+                }
+                copyDirectoryContents(item, target)
+            } else {
+                item.inputStream().buffered().use { input ->
+                    target.outputStream().buffered().use { output -> input.copyTo(output) }
+                }
+            }
         }
     }
 

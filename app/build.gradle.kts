@@ -15,7 +15,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.app"
+        applicationId = "ru.definitly486.blackview"
         // Android 10 (API 29) is the minimum supported version.
         minSdk = 29
         targetSdk = 35

@@ -5,6 +5,8 @@ package com.example.app.fragments
 import com.example.app.crypto.GpgDecryptor
 import com.example.app.download.DownloadHelper
 import android.os.Bundle
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Environment
 import android.os.Build
 import android.provider.MediaStore
@@ -319,43 +321,94 @@ class ThirdFragment : Fragment() {
         }
     }
 
+    private companion object {
+        const val REQUEST_DCIM_STORAGE_PERMISSION = 1103
+    }
+
+    private fun hasDcimStoragePermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            requireContext().checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+    }
+
     private fun cloneDcimToDownloads() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-            showToast("Разрешите доступ ко всем файлам для записи в /storage/emulated/0/download/dcim")
-            runCatching {
-                startActivity(
-                    Intent(
-                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                        Uri.parse("package:${requireContext().packageName}")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                showToast("Разрешите доступ ко всем файлам и повторите клонирование")
+                runCatching {
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:${requireContext().packageName}")
+                        )
                     )
-                )
+                }.onFailure {
+                    runCatching {
+                        startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                    }
+                }
+                return
             }
+        } else if (!hasDcimStoragePermission()) {
+            requestPermissions(
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                REQUEST_DCIM_STORAGE_PERMISSION
+            )
             return
         }
 
-        showToast("Клонирование GitHub DCIM в /storage/emulated/0/download/dcim…")
+        startDcimClone()
+    }
+
+    @Deprecated("Deprecated by Android; required for Android 10 runtime permission result")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_DCIM_STORAGE_PERMISSION) {
+            if (grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            ) {
+                cloneDcimToDownloads()
+            } else {
+                showToast("Для клонирования в Download необходимо разрешение на запись")
+            }
+        }
+    }
+
+    private fun startDcimClone() {
+        val context = requireContext().applicationContext
+        val cacheDir = requireContext().cacheDir
+        val destination = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "dcim"
+        )
+
+        showToast("Клонирование GitHub DCIM…")
 
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    val downloadDir = File("/storage/emulated/0/download/dcim")
-                    if (!downloadDir.exists() && !downloadDir.mkdirs()) {
-                        error("Не удалось создать /storage/emulated/0/download")
+                    if (!destination.exists() && !destination.mkdirs()) {
+                        error("Не удалось создать папку: ${destination.absolutePath}")
+                    }
+                    if (!destination.isDirectory || !destination.canWrite()) {
+                        error("Нет доступа на запись в: ${destination.absolutePath}")
                     }
 
-                    // JGit выполняет настоящий git clone без Shizuku и без shell/git binary.
-                    // Клонируем во временную папку, затем переносим содержимое репозитория
-                    // прямо в /storage/emulated/0/download/, чтобы там не появился DCIM-main/.
-                    val cloneDir = File(requireContext().cacheDir, "dcim_git_${System.currentTimeMillis()}")
-                    cloneDir.deleteRecursively()
+                    // Сначала клонируем в приватный каталог приложения. Это исключает
+                    // сбои JGit из-за Scoped Storage во время создания .git и объектов.
+                    val cloneDir = File(cacheDir, "dcim_git_${System.currentTimeMillis()}")
                     try {
-                        Git.cloneRepository()
-                            .setURI("https://github.com/definitly486/DCIM.git")
-                            .setDirectory(cloneDir)
-                            .call()
-                            .use { }
-
-                        copyDirectoryContents(cloneDir, downloadDir)
+                        val cloneResult = com.example.app.git.GitRepositoryCloner(context)
+                            .clone("https://github.com/definitly486/DCIM.git", cloneDir)
+                        val cloned = cloneResult.getOrElse { throw it }
+                        copyDirectoryContents(cloned, destination)
                     } finally {
                         cloneDir.deleteRecursively()
                     }
@@ -363,19 +416,22 @@ class ThirdFragment : Fragment() {
             }
 
             result.onSuccess {
-                showToast("Репозиторий DCIM успешно клонирован в /storage/emulated/0/download/dcim")
+                if (isAdded) showToast("Репозиторий DCIM успешно клонирован в ${destination.absolutePath}")
             }.onFailure { e ->
-                showToast("Ошибка клонирования DCIM: ${e.message ?: e.javaClass.simpleName}")
+                Log.e("GitCloneDCIM", "Ошибка клонирования DCIM", e)
+                if (isAdded) showToast("Ошибка клонирования: ${e.message ?: e.javaClass.simpleName}")
             }
         }
     }
 
     private fun copyDirectoryContents(source: File, destination: File) {
-        source.listFiles()?.forEach { sourceItem ->
+        val children = source.listFiles()
+            ?: throw IOException("Не удалось прочитать каталог: ${source.absolutePath}")
+        for (sourceItem in children) {
             val target = File(destination, sourceItem.name)
             if (sourceItem.isDirectory) {
                 if (!target.exists() && !target.mkdirs()) {
-                    error("Не удалось создать ${target.absolutePath}")
+                    throw IOException("Не удалось создать каталог: ${target.absolutePath}")
                 }
                 copyDirectoryContents(sourceItem, target)
             } else {

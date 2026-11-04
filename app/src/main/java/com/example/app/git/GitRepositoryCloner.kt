@@ -200,9 +200,6 @@ class GitRepositoryCloner(context: Context) {
 
         override fun isCancelled(): Boolean = cancelCheck()
 
-        override fun showDuration(enabled: Boolean) {
-            // Duration is displayed by the fragment progress label.
-        }
     }
 
     private fun resetDestination(destination: File) {

@@ -126,7 +126,7 @@ class SixthFragment : Fragment() {
         // Для записи в общую папку Downloads нужны разные разрешения на Android 10 и 11+.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                pendingStorageStart = launch
+                pendingStorageStart = { startCloneWithNotificationPermission(launch) }
                 try {
                     startActivity(
                         Intent(

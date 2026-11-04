@@ -84,6 +84,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // JGit 6.4 uses newer java.nio.file APIs; backport them for Android 10–12.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -161,6 +163,7 @@ private fun quoteBuildConfig(value: String): String = "\"" + value + "\""
 
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
     implementation(libs.bouncycastle.provider)
     implementation(libs.bouncycastle.pgp)
     implementation(libs.media3.exoplayer)

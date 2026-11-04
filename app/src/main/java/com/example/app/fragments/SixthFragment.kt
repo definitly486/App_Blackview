@@ -121,7 +121,10 @@ class SixthFragment : Fragment() {
             repoName
         )
         val appContext = requireContext().applicationContext
-        val launch = { GitCloneManager.start(appContext, url, repoName, destination) }
+        val launch: () -> Unit = {
+            GitCloneManager.start(appContext, url, repoName, destination)
+            Unit
+        }
 
         // Для записи в общую папку Downloads нужны разные разрешения на Android 10 и 11+.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
